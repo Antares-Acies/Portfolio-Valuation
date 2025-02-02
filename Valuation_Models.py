@@ -28368,7 +28368,6 @@ def if_key_exists(row, dictionary, key, value_type="others"):
 
 ## Volatility calculation from surface ##
 
-
 # Goal seek
 def optimized_vol(
     vol_test, calc_vol, spot_price, strike_price, ttm, r, q, x, y, interpolation_method, extrapolation_method
