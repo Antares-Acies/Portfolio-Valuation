@@ -25,7 +25,7 @@ import random
 from numba import float64, guvectorize, int64, njit, void
 from datetime import date, datetime
 from multiprocessing import Pool
-from helper import completion_percent
+from Helper import completion_percent
 
 
 def holiday_code_generator(product_data_row, weekday_data):
