@@ -28,10 +28,6 @@ from multiprocessing import Pool
 from Core.users.computation_studio_lib.helper import completion_percent
 
 
-
-
-
-
 def holiday_code_generator(product_data_row, weekday_data):
     if product_data_row["weekend_definition"] != "None":
         holiday_weekends = list(json.loads(product_data_row["weekend_definition"]).keys())
