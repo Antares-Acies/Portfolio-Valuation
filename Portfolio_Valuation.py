@@ -9,23 +9,23 @@ import subprocess
 import platform
 import re
 import os
-
 import pyarrow as pa
 import pyarrow.parquet as pq
 from pathlib import Path
 
 
-from Core.users.computation_studio_lib import Valuation_Models
 from Core.users.computations.db_centralised_function import read_data_func, data_handling
+from config.settings.base import DISKSTORE_PATH
+
+
+from Valuation_Models import Valuation_Models
 import pyarrow as pa
 import pyarrow.parquet as pq
 import random
-from config.settings.base import DISKSTORE_PATH
 from numba import float64, guvectorize, int64, njit, void
 from datetime import date, datetime
 from multiprocessing import Pool
-
-from Core.users.computation_studio_lib.helper import completion_percent
+from helper import completion_percent
 
 
 def holiday_code_generator(product_data_row, weekday_data):
