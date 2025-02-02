@@ -27,6 +27,211 @@ from multiprocessing import Pool
 
 from Core.users.computation_studio_lib.helper import completion_percent
 
+
+
+
+
+
+def holiday_code_generator(product_data_row, weekday_data):
+    if product_data_row["weekend_definition"] != "None":
+        holiday_weekends = list(json.loads(product_data_row["weekend_definition"]).keys())
+    else:
+        holiday_weekends = "None"
+    weekday_data = json.loads(weekday_data)
+    weekday_dataframe = pd.DataFrame(weekday_data)
+    if holiday_weekends != "None":
+        holidays = []
+        for i in holiday_weekends:
+            holiday = weekday_dataframe.loc[weekday_dataframe["id"] == int(i), "day"].iloc[0]
+            holidays.append(holiday)
+        business_days = ""
+        for j in weekday_data["day"]:
+            if j in holidays:
+                business_days += "0"
+            else:
+                business_days += "1"
+    else:
+        holidays = []
+        business_days = "1111100"
+
+    product_variant_name = product_data_row["product_variant_name"]
+    z_spread_calculation = product_data_row["z_spread_calculation"]
+    product_data_df = pd.DataFrame(
+        [
+            {
+                "product_variant_name": product_variant_name,
+                "weekend": holidays,
+                "business_days": business_days,
+                "z_spread_calculation": z_spread_calculation,
+            }
+        ]
+    )
+    return product_data_df
+
+def curve_component_transformation(curve_repo_data_ind):
+    curve_components = {"curve_components": list(json.loads(curve_repo_data_ind["curve_components"]).keys())}
+    components_new_df = pd.DataFrame(curve_components)
+    components_new_df["curve_components"] = components_new_df["curve_components"].astype("int")
+    components_new_df["curve_name"] = curve_repo_data_ind["curve_name"]
+    components_new_df["interpolation_algorithm"] = curve_repo_data_ind["interpolation_algorithm"]
+    components_new_df["extrapolation_algorithm"] = curve_repo_data_ind["extrapolation_algorithm"]
+    components_new_df["day_count"] = curve_repo_data_ind["day_count"]
+    if "compounding_frequency_output" in curve_repo_data_ind.keys():
+        components_new_df["compounding_frequency_output"] = curve_repo_data_ind[
+            "compounding_frequency_output"
+        ]
+    del curve_components
+    return components_new_df
+
+
+def daycount_convention_code(self, daycount_convention):
+    if isinstance(daycount_convention, (list, np.ndarray)):
+        daycount_convention = daycount_convention[0]
+    
+    daycount_convention_lower = daycount_convention.lower()
+    daycount_mapping = {
+        "30/360_bond_basis": 1,
+        "30/360": 1,
+        "30/360_us": 2,
+        "30e/360": 3,
+        "30e/360_isda": 4,
+        "30e+/360_isda": 5,
+        "act/360": 6,
+        "act/365": 7,
+        "actual/365": 7,
+        "act/365l": 8,
+        "act/365a": 9,
+        "nl/365": 10,
+        "act/act_isda": 11,
+        "act/act_icma": 12,
+        "business/252": 13,
+        "act/act": 14,
+        "actual/actual": 14,
+    }
+    
+    # Return the code based on the mapping, default to the input if not found
+    return daycount_mapping.get(daycount_convention_lower, daycount_convention)
+
+
+def discount_rate_calc(ttm,tenor,rates,interpolation_algorithm,extrapolation_algorithm):
+    if interpolation_algorithm == "Linear":
+        calculated_rate = linearinterp(tenor, rates, np.float64(ttm))
+        if calculated_rate is None:
+            if extrapolation_algorithm == "Linear":
+                calculated_rate = linearexterp(tenor, rates, np.float64(ttm))
+            else:
+                calculated_rate = flatexterp(tenor, rates, np.float64(ttm))
+        else:
+            calculated_rate = calculated_rate
+    return calculated_rate
+
+def discount_factor_calculation_general(row, interest_rate_col):
+    if row["curve_compounding_frequency"] in ["Continuous", "continuous", "continuously"]:
+        df = np.exp(-row["time_to_maturity"] * row[interest_rate_col])
+    elif row["curve_compounding_frequency"] in ["monthly", "Monthly"]:
+        df = np.power(1 + row[interest_rate_col] / 12, -12 * row["time_to_maturity"])
+    elif row["curve_compounding_frequency"] in ["quarterly", "Quarterly"]:
+        df = np.power(1 + row[interest_rate_col] / 4, -4 * row["time_to_maturity"])
+    elif row["curve_compounding_frequency"] in ["semi-annualised", "Semi-Annual", "semi-annually"]:
+        df = np.power(1 + row[interest_rate_col] / 2, -2 * row["time_to_maturity"])
+    elif row["curve_compounding_frequency"] in ["bi-annual", "Bi-Annual", "bi-annually"]:
+        df = np.power(1 + row[interest_rate_col] / 0.5, -0.5 * row["time_to_maturity"])
+    else:
+        df = np.power(1 + row[interest_rate_col], -row["time_to_maturity"])
+    return df
+
+# linear interpolation
+@njit(cache=True, fastmath=True)
+def linearinterp(x, y, independent_var_value):
+    n = len(x)
+    for j in range(1, n):
+        if (x[j - 1]) <= independent_var_value <= (x[j]):
+            return y[j - 1] + ((y[j] - y[j - 1]) * (independent_var_value - x[j - 1]) / (x[j] - x[j - 1]))
+
+
+# linear extrapolation
+@njit(cache=True, fastmath=True)
+def linearexterp(x, y, independent_var_value):
+    if independent_var_value > (x[-1]):
+        return y[-1] + (independent_var_value - x[-1]) * (y[-1] - y[-2]) / (x[-1] - x[-2])
+    elif independent_var_value < x[0]:
+        return y[0] + (independent_var_value - x[0]) * (y[1] - y[0]) / (x[1] - x[0])
+
+
+# cubic spline
+def cubicspline(x, y, independent_var_value):
+    check = CubicSpline(x, y)
+    return check(independent_var_value)
+
+
+@njit(cache=True, fastmath=True)
+def flatexterp(x, y, independent_var_value):
+    if independent_var_value > (x[-1]):
+        return y[-1]
+    elif independent_var_value < x[0]:
+        return y[0]
+
+
+@guvectorize([void(float64[:], float64[:], float64, float64[:])], "(n),(n),()->()")
+def linforward(x, y, independent_var_value, result):
+    n = len(x)
+    for j in range(1, n):
+        if (x[j - 1]) < independent_var_value < (x[j]):
+            forward0 = (x[j] * y[j] - x[j - 1] * y[j - 1]) / (x[j] - x[j - 1])
+            forward1 = (x[j + 1] * y[j + 1] - x[j] * y[j]) / (x[j + 1] - x[j])
+            interpolated_forward = forward0 + (
+                (forward1 - forward0) * (independent_var_value - x[j - 1]) / (x[j] - x[j - 1])
+            )
+
+            result[:] = (
+                y[j - 1] * x[j - 1] + interpolated_forward * (independent_var_value - x[j - 1])
+            ) / independent_var_value
+
+
+# piecewise linear
+@njit(cache=True, fastmath=True)
+def bilinearint(x, y, f, x0, y0):
+    w = []
+    n = len(x)
+    xu = min(c for c in x if c >= x0)
+    xl = max(d for d in x if d <= x0)
+    yu = min(g for g in y if g >= y0)
+    yl = max(h for h in y if h <= y0)
+    for j in range(0, n):
+        if xl <= x[j] <= xu and yl <= y[j] <= yu:
+            w.append([x[j], y[j], f[j]])
+    return (
+        (w[0][2] * (w[2][0] - x0) * (w[1][1] - y0))
+        + (w[2][2] * (x0 - w[0][0]) * (w[1][1] - y0))
+        + (w[1][2] * (w[2][0] - x0) * (y0 - w[0][1]))
+        + (w[3][2] * (x0 - w[0][0]) * (y0 - w[0][1]))
+    ) / ((w[2][0] - w[0][0]) * (w[1][1] - w[0][1]))
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.datetime64):
+            return str(obj)
+        elif isinstance(obj, date):
+            return obj.strftime("%Y-%m-%d")
+        elif isinstance(obj, datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return super().default(obj)
+
+def cashflow_dict_generation(position_id, cashflow_output_data):
+    cashflow_dict = json.dumps(cashflow_output_data.loc[cashflow_output_data['position_id']==position_id].replace("", "-").fillna("-").to_dict("records"), cls=NpEncoder)
+    return cashflow_dict
+
+def sensitivity_dict_generation(sensitivity_output_data):
+    sensitivity_dict = json.dumps([{"Macaulay Duration":sensitivity_output_data["Macaulay Duration"],"Modified Duration":sensitivity_output_data["Modified Duration"],"PV01 per unit":sensitivity_output_data["PV01 per unit"]}])
+    return sensitivity_dict
+
 # When CPU usage exceeds 80%, trashing (excessive paging) may occur, leading to performance degradation.
 cpu_total_count = int(multiprocessing.cpu_count() * 0.8)
 func = Valuation_Models.Value_extraction_pf
@@ -1062,413 +1267,6 @@ def final_valuation_fn(config_dict, request, data=None):
                     cs_curve_components_data,
                     mtm_data)
 
-    val_date_filtered_cashflow_uploaded_aggregate_model_M053 = val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M053"])
-    ]
-
-    val_date_filtered_cashflow_uploaded_aggregate_model_M051= val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M051"])
-    ]
-
-    val_date_filtered_cashflow_uploaded_aggregate_model_M056= val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M056"])
-    ]
-
-    val_date_filtered_cashflow_uploaded_aggregate_model_M060= val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M060"])
-    ]
-    val_date_filtered_cashflow_uploaded_aggregate_model_M062= val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M062"])
-    ]
-    val_date_filtered_cashflow_uploaded_aggregate_model_M063= val_date_filtered.loc[
-        val_date_filtered["model_code"].isin(["M063"])
-    ]
-
-    def common_computation(final_output_main,chunk_pos_data_cashflow, model_number,cashflow_data_filtered,pos):
-        cashflow_data_filtered = pd.merge(cashflow_data_filtered, chunk_pos_data_cashflow[['position_id','discount_daycount_convention','discounting_curve','credit_spread_rate','credit_spread_curve','fixed_or_float_flag','next_reset_date','quantity','primary_currency']], left_on='position_id', right_on='position_id', how='left')
-        chunk_pos_data  = []
-        del chunk_pos_data
-        cashflow_data_filtered['quantity'] = cashflow_data_filtered['quantity'].fillna(1) 
-        cashflow_data_filtered["time_to_maturity"] = cashflow_data_filtered["time_to_maturity"].to_numpy(dtype="float64")
-
-        discount_curves = cashflow_data_filtered['discounting_curve'].unique().tolist()
-        curve_component_transformation_vect = np.vectorize(curve_component_transformation)
-        curve_component_transformation_result = curve_component_transformation_vect(
-            curve_repo_data.loc[curve_repo_data['curve_name'].isin(discount_curves)].to_dict("records")
-        )
-        curve_data = pd.concat(curve_component_transformation_result, ignore_index=True)
-        del curve_component_transformation_result
-        curve_data = curve_data.merge(
-            curve_components_data, left_on="curve_components", right_on="id", how="left"
-        ).drop(columns=["curve_components", "id"])
-        curve_data["tenor"] = np.where(
-            curve_data["tenor_unit"] == "D",
-            curve_data["tenor_value"] / 365.25,
-            np.where(curve_data["tenor_unit"] == "M", curve_data["tenor_value"] / 12, curve_data["tenor_value"]),
-        )
-        curve_data = (
-            curve_data.merge(
-                mtm_data.loc[
-                    mtm_data["extract_date"]
-                    == pd.to_datetime(valuation_date, dayfirst=True),
-                    ["security_identifier", "quoted_price"],
-                ],
-                left_on="curve_component",
-                right_on="security_identifier",
-                how="left",
-            )
-            .drop(columns=["security_identifier"])
-            .rename(columns={"quoted_price": "rate"})
-        )
-        curve_data.sort_values(by=["curve_name", "tenor"], inplace=True)
-
-        credit_spread_curves = cashflow_data_filtered.loc[(cashflow_data_filtered['credit_spread_curve'].notna())&(~cashflow_data_filtered['credit_spread_curve'].isin(['None','',None,'-'])),"credit_spread_curve"].unique().tolist()
-        if len(credit_spread_curves)>0:
-            cs_curve_component_transformation_result = curve_component_transformation_vect(
-                cs_curve_repo_data.loc[cs_curve_repo_data['curve_name'].isin(credit_spread_curves)].to_dict("records")
-            )
-            cs_curve_data = pd.concat(cs_curve_component_transformation_result, ignore_index=True)
-            del cs_curve_component_transformation_result
-            cs_curve_data = cs_curve_data.merge(
-                cs_curve_components_data, left_on="curve_components", right_on="id", how="left"
-            ).drop(columns=["curve_components", "id"])
-            cs_curve_data["tenor"] = np.where(
-                cs_curve_data["tenor_unit"] == "D",
-                cs_curve_data["tenor_value"] / 365.25,
-                np.where(
-                    cs_curve_data["tenor_unit"] == "M",
-                    cs_curve_data["tenor_value"] / 12,
-                    cs_curve_data["tenor_value"],
-                ),
-            )
-            credit_spread_data = (
-                cs_curve_data.merge(
-                    mtm_data.loc[
-                        mtm_data["extract_date"]
-                        == pd.to_datetime(valuation_date, dayfirst=True),
-                        ["security_identifier", "quoted_price"],
-                    ],
-                    left_on="curve_component",
-                    right_on="security_identifier",
-                    how="left",
-                )
-                .drop(columns=["security_identifier"])
-                .rename(columns={"quoted_price": "spread_value", "curve_name": "credit_spread_curve_name"})
-            )
-            del cs_curve_data
-            credit_spread_data.sort_values(by=["credit_spread_curve_name", "tenor"], inplace=True)
-        else:
-            credit_spread_data = pd.DataFrame()
-        
-        cashflow_data_after_discount_rate = []
-        for i in discount_curves:
-            tenor = curve_data.loc[curve_data['curve_name'] == i,"tenor"].to_numpy(dtype="float64")
-            rates = curve_data.loc[curve_data['curve_name'] == i,"rate"].to_numpy(dtype="float64")
-            interpolation_algorithm = curve_data.loc[curve_data['curve_name'] == i,"interpolation_algorithm"].iloc[0]
-            extrapolation_algorithm = curve_data.loc[curve_data['curve_name'] == i,"extrapolation_algorithm"].iloc[0]
-            curve_compounding_frequency = curve_data["compounding_frequency_output"].iloc[0]
-            cashflow_data_filtered_curve = cashflow_data_filtered.loc[cashflow_data_filtered['discounting_curve']==i]
-            cashflow_data_filtered_curve.loc[:,"discount_rate"] = cashflow_data_filtered_curve['time_to_maturity'].apply(discount_rate_calc, args=(tenor,rates,interpolation_algorithm,extrapolation_algorithm))
-            cashflow_data_filtered_curve.loc[:,"curve_compounding_frequency"] = curve_compounding_frequency
-            cashflow_data_after_discount_rate.append(cashflow_data_filtered_curve)
-        
-        cashflow_data_after_discount_rate = pd.concat(cashflow_data_after_discount_rate, ignore_index=True)
-        cashflow_data_filtered = []
-        del cashflow_data_filtered
-        cashflow_data_after_discount_rate['spread_rate_curve'] = np.where(cashflow_data_after_discount_rate['credit_spread_rate'].notna(),cashflow_data_after_discount_rate['credit_spread_rate'],np.where(((cashflow_data_after_discount_rate["credit_spread_curve"].isin([np.nan,None,'None','-','']))|~(cashflow_data_after_discount_rate["credit_spread_curve"].isin(credit_spread_curves))),0,"Curve based"))
-        cashflow_data_after_discount_rate.loc[cashflow_data_after_discount_rate['spread_rate_curve']!="Curve based",'spread_rate'] = cashflow_data_after_discount_rate.loc[cashflow_data_after_discount_rate['spread_rate_curve']!="Curve based",'spread_rate_curve']
-        cashflow_data_after_discount_and_credit_spread_rate = [cashflow_data_after_discount_rate.loc[cashflow_data_after_discount_rate['spread_rate_curve']!="Curve based"]]
-        for i in credit_spread_curves:
-            tenor = credit_spread_data.loc[credit_spread_data['credit_spread_curve_name'] == i,"tenor"].to_numpy(dtype="float64")
-            rates = credit_spread_data.loc[credit_spread_data['credit_spread_curve_name'] == i,"spread_value"].to_numpy(dtype="float64")
-            interpolation_algorithm = credit_spread_data.loc[credit_spread_data['credit_spread_curve_name'] == i,"interpolation_algorithm"].iloc[0]
-            extrapolation_algorithm = credit_spread_data.loc[credit_spread_data['credit_spread_curve_name'] == i,"extrapolation_algorithm"].iloc[0]
-            cashflow_data_after_discount_rate_credit_spread = cashflow_data_after_discount_rate.loc[(cashflow_data_after_discount_rate['spread_rate_curve']=="Curve based")&(cashflow_data_after_discount_rate['credit_spread_curve']==i)]
-            if len(cashflow_data_after_discount_rate_credit_spread)>0:
-                cashflow_data_after_discount_rate_credit_spread["spread_rate"] = cashflow_data_after_discount_rate_credit_spread['time_to_maturity'].apply(discount_rate_calc, args=(tenor,rates,interpolation_algorithm,extrapolation_algorithm))
-            else:
-                cashflow_data_after_discount_rate_credit_spread["spread_rate"] = 0
-            cashflow_data_after_discount_and_credit_spread_rate.append(cashflow_data_after_discount_rate_credit_spread)
-
-        final_cashflow_data = pd.concat(cashflow_data_after_discount_and_credit_spread_rate, ignore_index=True)
-        final_cashflow_data['interest_rate'] = final_cashflow_data['discount_rate'] + final_cashflow_data['spread_rate'].astype('float64')
-        cashflow_data_after_discount_rate = []
-        del cashflow_data_after_discount_rate
-
-        cashflow_data_after_discount_rate_credit_spread = []
-        del cashflow_data_after_discount_rate_credit_spread
-
-        final_cashflow_data['interest_rate_+1bps'] = final_cashflow_data['interest_rate'] + 0.0001
-        final_cashflow_data['interest_rate_-1bps'] = final_cashflow_data['interest_rate'] - 0.0001
-
-        final_cashflow_data['discount_factor'] = final_cashflow_data.apply(lambda row: discount_factor_calculation_general(row, 'interest_rate'), axis=1)
-        final_cashflow_data['discount_factor_+1bps'] = final_cashflow_data.apply(lambda row: discount_factor_calculation_general(row, 'interest_rate_+1bps'), axis=1)
-        final_cashflow_data['discount_factor_-1bps'] = final_cashflow_data.apply(lambda row: discount_factor_calculation_general(row, 'interest_rate_-1bps'), axis=1)
-
-        final_cashflow_data['present_value'] = final_cashflow_data['cashflow']*final_cashflow_data['discount_factor'] 
-        final_cashflow_data['present_value_+1bps'] = final_cashflow_data['cashflow']*final_cashflow_data['discount_factor_+1bps']
-        final_cashflow_data['present_value_-1bps'] = final_cashflow_data['cashflow']*final_cashflow_data['discount_factor_-1bps']
-
-        final_cashflow_data["pv*t"] = final_cashflow_data['present_value']*final_cashflow_data['time_to_maturity']
-        
-        final_cashflow_data_aggregation = final_cashflow_data.loc[final_cashflow_data['cashflow_type']!="Accrued Interest"].groupby(['position_id'])[['present_value','present_value_+1bps','present_value_-1bps','pv*t']].aggregate("sum", engine="cython").reset_index().rename(columns= {'present_value':'present_value_position','present_value_+1bps':'present_value_position_+1bps', 'present_value_-1bps':'present_value_position_-1bps','pv*t':'pv*t_position'})
-        final_cashflow_data = final_cashflow_data.merge(final_cashflow_data_aggregation, left_on='position_id',right_on='position_id',how='left')
-        final_cashflow_data.loc[final_cashflow_data['cashflow_type']=="Accrued Interest","present_value"] = 0
-        final_cashflow_data.loc[final_cashflow_data['cashflow_type']=="Accrued Interest","discount_factor"] = 0
-        final_cashflow_data["Fair Value per unit"] = final_cashflow_data["present_value_position"]/final_cashflow_data["quantity"] 
-        final_cashflow_data["macaulay_duration"] = final_cashflow_data["pv*t_position"] / final_cashflow_data["present_value_position"] 
-        final_cashflow_data["pv01"] = (abs(final_cashflow_data["present_value_position_+1bps"] - final_cashflow_data["present_value_position"]) + abs(final_cashflow_data["present_value_position_-1bps"] - final_cashflow_data["present_value_position"])) / 2
-        final_cashflow_data["PV01 per unit"] =final_cashflow_data["pv01"]/final_cashflow_data["quantity"]
-        final_cashflow_data["modified_duration"] = (10000*final_cashflow_data["pv01"])/final_cashflow_data["present_value_position"]
-
-        cashflow_output = final_cashflow_data.loc[:,["extract_date",'transaction_date','unique_reference_id','reference_dimension','cashflow_type','cashflow_status','cashflow','time_to_maturity','discount_factor','present_value','currency','asset_liability_type','product_variant_name','fund','portfolio','entity','cohort','position_id']]
-        cashflow_output["cf_analysis_id"] = cf_analysis_id
-        
-        final_cashflow_data.rename(columns={'present_value_position':'Fair Value','macaulay_duration':'Macaulay Duration','modified_duration':'Modified Duration','pv01':'PV01'}, inplace=True)
-        final_cashflow_data_unique = final_cashflow_data.drop_duplicates(['position_id']) 
-        measures_output = pd.melt(final_cashflow_data_unique, id_vars=['position_id','unique_reference_id'], value_vars=['Fair Value per unit','Fair Value','Macaulay Duration','Modified Duration','PV01'], var_name="measure_type", value_name='measure_value')
-        measures_output['measure_run_date'] = datetime.now()
-        measures_output['absolute_relative'] = np.where(measures_output['measure_type'].isin(['Modified Duration','Effective Duration']),"Relative","Absolute")
-        measures_output = measures_output.merge(final_cashflow_data_unique[['position_id','extract_date','reference_dimension','asset_liability_type','product_variant_name','portfolio','cohort','entity',"primary_currency"]]).rename(columns={'extract_date':'valuation_date','primary_currency':"currency"})
-        max_ttm = final_cashflow_data.groupby('position_id')['time_to_maturity'].max().reset_index().rename(columns={"time_to_maturity":'residual_maturity'})
-        measures_output = measures_output.merge(max_ttm,left_on="position_id",right_on="position_id",how="left")
-        max_ttm = []
-        del max_ttm
-        measures_output["cf_analysis_id"] = cf_analysis_id
-        cashflow_output = cashflow_output.loc[cashflow_output["cashflow"].notnull()]
-        if "measure_value" in measures_output.columns:
-            measures_output = measures_output.loc[measures_output["measure_value"].notnull()]
-        
-        final_output = final_cashflow_data_unique.head(100).copy()
-        final_cashflow_data_unique = []
-        del final_cashflow_data_unique
-
-        final_output.rename(columns={'unique_reference_id':"Unique_Reference_ID",'position_id':"Position_Id",'product_variant_name':"Product_Variant_Name","extract_date":"Valuation_Date", 'Fair Value per unit': 'Fair_Value_Per_Unit','Fair Value':'Total_Holding','quantity':"Quantity"}, inplace=True)
-        final_output["Sensitivity"] = final_output.apply(lambda row: sensitivity_dict_generation(row), axis=1)
-        final_output["Cashflow_Result"] = final_output["Position_Id"].apply(cashflow_dict_generation,cashflow_output_data=cashflow_output)
-        final_output_main = pd.concat([final_output_main,final_output[['Unique_Reference_ID','Position_Id','Product_Variant_Name','Valuation_Date','Cashflow_Result', 'Fair_Value_Per_Unit','Quantity','Total_Holding','Sensitivity']]], ignore_index=True)
-
-
-        if len(cashflow_output)>0:
-            cashflow_output = pa.Table.from_pandas(cashflow_output)
-            pq.write_table(cashflow_output,f'{DISKSTORE_PATH}/Cashflow_Engine_Outputs/Cashflow/cashflow_output_{model_number}_{pos}_{run_id}.parquet')
-
-        if len(measures_output)>0:
-            measures_output = pa.Table.from_pandas(measures_output)
-            pq.write_table(measures_output,f'{DISKSTORE_PATH}/Cashflow_Engine_Outputs/Measures/measures_output_{model_number}_{pos}_{run_id}.parquet')
-
-        cashflow_output = []
-        measures_output = []
-        final_output = []
-        del cashflow_output
-        del measures_output
-        del final_output
-        pos += 1
-        return final_output_main
-    
-  
-    pos  = 0
-    I=1
-    completed_so_far = 0
-
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M051)>0:
-
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completed_so_far += len(chunk_pos_data_cashflow)
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            func = Valuation_Models.Value_extraction_pf
-            [],cashflow_data_filtered,[] = applyParallel(
-                        config_dict,
-                        column_index_dict,
-                        chunk_pos_data_cashflow,
-                        vol_repo_data,
-                        vol_components_data,
-                        holiday_calendar,
-                        currency_data,
-                        NMD_adjustments,
-                        repayment_schedule,
-                        func,
-                        vix_data,
-                        cf_analysis_id,
-                        cashflow_data_filtered,  
-                        underlying_position_data,
-                        custom_daycount_conventions,
-                        dpd_ruleset,
-                        overdue_bucketing_data,
-                        dpd_schedule,
-                        product_holiday_code,
-                        request,
-                        mtm_data,
-                        curve_data,
-                        credit_spread_data,
-                    )
-                
-            cashflow_data_filtered = pd.DataFrame(cashflow_data_filtered)
-            
-            model_number = "M051" 
-            final_output_main  = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos)
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M051"]
-    
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M060)>0:
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completed_so_far += len(chunk_pos_data_cashflow)
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            func = Valuation_Models.Value_extraction_pf
-            [],cashflow_data_filtered,[] = applyParallel(
-                        config_dict,
-                        column_index_dict,
-                        chunk_pos_data_cashflow,
-                        vol_repo_data,
-                        vol_components_data,
-                        holiday_calendar,
-                        currency_data,
-                        NMD_adjustments,
-                        repayment_schedule,
-                        func,
-                        vix_data,
-                        cf_analysis_id,
-                        cashflow_data_filtered, 
-                        underlying_position_data,
-                        custom_daycount_conventions,
-                        dpd_ruleset,
-                        overdue_bucketing_data,
-                        dpd_schedule,
-                        product_holiday_code,
-                        request,
-                        mtm_data,
-                        curve_data,
-                        credit_spread_data,
-                    )
-                
-            cashflow_data_filtered = pd.DataFrame(cashflow_data_filtered)
-            
-            model_number = "M060" 
-            final_output_main  = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos)
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M060"]
-
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M062)>0:
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completed_so_far += len(chunk_pos_data_cashflow)
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            func = Valuation_Models.Value_extraction_pf
-            [],cashflow_data_filtered,[] = applyParallel(
-                        config_dict,
-                        column_index_dict,
-                        chunk_pos_data_cashflow,
-                        vol_repo_data,
-                        vol_components_data,
-                        holiday_calendar,
-                        currency_data,
-                        NMD_adjustments,
-                        repayment_schedule,
-                        func,
-                        vix_data,
-                        cf_analysis_id,
-                        cashflow_data_filtered,
-                        underlying_position_data,
-                        custom_daycount_conventions,
-                        dpd_ruleset,
-                        overdue_bucketing_data,
-                        dpd_schedule,
-                        product_holiday_code,
-                        request,
-                        mtm_data,
-                        curve_data,
-                        credit_spread_data,
-                    )
-                
-            cashflow_data_filtered = pd.DataFrame(cashflow_data_filtered)
-            
-            model_number = "M062" 
-            final_output_main  = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos)
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M062"]
-
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M063)>0:
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completed_so_far += len(chunk_pos_data_cashflow)
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            func = Valuation_Models.Value_extraction_pf
-            [],cashflow_data_filtered,[] = applyParallel(
-                        config_dict,
-                        column_index_dict,
-                        chunk_pos_data_cashflow,
-                        vol_repo_data,
-                        vol_components_data,
-                        holiday_calendar,
-                        currency_data,
-                        NMD_adjustments,
-                        repayment_schedule,
-                        func,
-                        vix_data,
-                        cf_analysis_id,
-                        cashflow_data_filtered, 
-                        underlying_position_data,
-                        custom_daycount_conventions,
-                        dpd_ruleset,
-                        overdue_bucketing_data,
-                        dpd_schedule,
-                        product_holiday_code,
-                        request,
-                        mtm_data,
-                        curve_data,
-                        credit_spread_data,
-                    )
-                
-            cashflow_data_filtered = pd.DataFrame(cashflow_data_filtered)
-            
-            model_number = "M063" 
-            final_output_main  = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos)
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M063"]
-
-
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M056)>0:
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completed_so_far += len(chunk_pos_data_cashflow)
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            func = Valuation_Models.Value_extraction_pf
-            [],cashflow_data_filtered,[] = applyParallel(
-                        config_dict,
-                        column_index_dict,
-                        chunk_pos_data_cashflow,
-                        vol_repo_data,
-                        vol_components_data,
-                        holiday_calendar,
-                        currency_data,
-                        NMD_adjustments,
-                        repayment_schedule,
-                        func,
-                        vix_data,
-                        cf_analysis_id,
-                        cashflow_data_filtered, 
-                        underlying_position_data,
-                        custom_daycount_conventions,
-                        dpd_ruleset,
-                        overdue_bucketing_data,
-                        dpd_schedule,
-                        product_holiday_code,
-                        request,
-                        mtm_data,
-                        curve_data,
-                        credit_spread_data,
-                    )
-                
-            cashflow_data_filtered = pd.DataFrame(cashflow_data_filtered)
-            model_number = "M056" 
-            final_output_main  = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos)
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M056"]  
-
-    if len(val_date_filtered_cashflow_uploaded_aggregate_model_M053)>0:
-        for chunk_pos_data_cashflow in np.array_split(val_date_filtered, len(val_date_filtered)/chunk_size if len(val_date_filtered)>chunk_size else 1):
-            completion_percent(completed_so_far, val_date_filtered)
-            cashflow_data_filtered = cashflow_uploaded_data.loc[cashflow_uploaded_data['position_id'].isin(chunk_pos_data_cashflow['position_id'])]
-            model_number = "M053"
-            final_output_main = common_computation(final_output_main,chunk_pos_data_cashflow,model_number,cashflow_data_filtered,pos )
-        val_date_filtered = val_date_filtered.loc[val_date_filtered['model_code']!="M053"]
 
     if len(val_date_filtered)>0:
         val_date_filtered_array = np.array(val_date_filtered)
@@ -1886,204 +1684,3 @@ def final_valuation_fn(config_dict, request, data=None):
 
     return final_output_main, output_dict, var_plot
     
-
-
-def holiday_code_generator(product_data_row, weekday_data):
-    if product_data_row["weekend_definition"] != "None":
-        holiday_weekends = list(json.loads(product_data_row["weekend_definition"]).keys())
-    else:
-        holiday_weekends = "None"
-    weekday_data = json.loads(weekday_data)
-    weekday_dataframe = pd.DataFrame(weekday_data)
-    if holiday_weekends != "None":
-        holidays = []
-        for i in holiday_weekends:
-            holiday = weekday_dataframe.loc[weekday_dataframe["id"] == int(i), "day"].iloc[0]
-            holidays.append(holiday)
-        business_days = ""
-        for j in weekday_data["day"]:
-            if j in holidays:
-                business_days += "0"
-            else:
-                business_days += "1"
-    else:
-        holidays = []
-        business_days = "1111100"
-
-    product_variant_name = product_data_row["product_variant_name"]
-    z_spread_calculation = product_data_row["z_spread_calculation"]
-    product_data_df = pd.DataFrame(
-        [
-            {
-                "product_variant_name": product_variant_name,
-                "weekend": holidays,
-                "business_days": business_days,
-                "z_spread_calculation": z_spread_calculation,
-            }
-        ]
-    )
-    return product_data_df
-
-def curve_component_transformation(curve_repo_data_ind):
-    curve_components = {"curve_components": list(json.loads(curve_repo_data_ind["curve_components"]).keys())}
-    components_new_df = pd.DataFrame(curve_components)
-    components_new_df["curve_components"] = components_new_df["curve_components"].astype("int")
-    components_new_df["curve_name"] = curve_repo_data_ind["curve_name"]
-    components_new_df["interpolation_algorithm"] = curve_repo_data_ind["interpolation_algorithm"]
-    components_new_df["extrapolation_algorithm"] = curve_repo_data_ind["extrapolation_algorithm"]
-    components_new_df["day_count"] = curve_repo_data_ind["day_count"]
-    if "compounding_frequency_output" in curve_repo_data_ind.keys():
-        components_new_df["compounding_frequency_output"] = curve_repo_data_ind[
-            "compounding_frequency_output"
-        ]
-    del curve_components
-    return components_new_df
-
-
-def daycount_convention_code(self, daycount_convention):
-    if isinstance(daycount_convention, (list, np.ndarray)):
-        daycount_convention = daycount_convention[0]
-    
-    daycount_convention_lower = daycount_convention.lower()
-    daycount_mapping = {
-        "30/360_bond_basis": 1,
-        "30/360": 1,
-        "30/360_us": 2,
-        "30e/360": 3,
-        "30e/360_isda": 4,
-        "30e+/360_isda": 5,
-        "act/360": 6,
-        "act/365": 7,
-        "actual/365": 7,
-        "act/365l": 8,
-        "act/365a": 9,
-        "nl/365": 10,
-        "act/act_isda": 11,
-        "act/act_icma": 12,
-        "business/252": 13,
-        "act/act": 14,
-        "actual/actual": 14,
-    }
-    
-    # Return the code based on the mapping, default to the input if not found
-    return daycount_mapping.get(daycount_convention_lower, daycount_convention)
-
-
-def discount_rate_calc(ttm,tenor,rates,interpolation_algorithm,extrapolation_algorithm):
-    if interpolation_algorithm == "Linear":
-        calculated_rate = linearinterp(tenor, rates, np.float64(ttm))
-        if calculated_rate is None:
-            if extrapolation_algorithm == "Linear":
-                calculated_rate = linearexterp(tenor, rates, np.float64(ttm))
-            else:
-                calculated_rate = flatexterp(tenor, rates, np.float64(ttm))
-        else:
-            calculated_rate = calculated_rate
-    return calculated_rate
-
-def discount_factor_calculation_general(row, interest_rate_col):
-    if row["curve_compounding_frequency"] in ["Continuous", "continuous", "continuously"]:
-        df = np.exp(-row["time_to_maturity"] * row[interest_rate_col])
-    elif row["curve_compounding_frequency"] in ["monthly", "Monthly"]:
-        df = np.power(1 + row[interest_rate_col] / 12, -12 * row["time_to_maturity"])
-    elif row["curve_compounding_frequency"] in ["quarterly", "Quarterly"]:
-        df = np.power(1 + row[interest_rate_col] / 4, -4 * row["time_to_maturity"])
-    elif row["curve_compounding_frequency"] in ["semi-annualised", "Semi-Annual", "semi-annually"]:
-        df = np.power(1 + row[interest_rate_col] / 2, -2 * row["time_to_maturity"])
-    elif row["curve_compounding_frequency"] in ["bi-annual", "Bi-Annual", "bi-annually"]:
-        df = np.power(1 + row[interest_rate_col] / 0.5, -0.5 * row["time_to_maturity"])
-    else:
-        df = np.power(1 + row[interest_rate_col], -row["time_to_maturity"])
-    return df
-
-# linear interpolation
-@njit(cache=True, fastmath=True)
-def linearinterp(x, y, independent_var_value):
-    n = len(x)
-    for j in range(1, n):
-        if (x[j - 1]) <= independent_var_value <= (x[j]):
-            return y[j - 1] + ((y[j] - y[j - 1]) * (independent_var_value - x[j - 1]) / (x[j] - x[j - 1]))
-
-
-# linear extrapolation
-@njit(cache=True, fastmath=True)
-def linearexterp(x, y, independent_var_value):
-    if independent_var_value > (x[-1]):
-        return y[-1] + (independent_var_value - x[-1]) * (y[-1] - y[-2]) / (x[-1] - x[-2])
-    elif independent_var_value < x[0]:
-        return y[0] + (independent_var_value - x[0]) * (y[1] - y[0]) / (x[1] - x[0])
-
-
-# cubic spline
-def cubicspline(x, y, independent_var_value):
-    check = CubicSpline(x, y)
-    return check(independent_var_value)
-
-
-@njit(cache=True, fastmath=True)
-def flatexterp(x, y, independent_var_value):
-    if independent_var_value > (x[-1]):
-        return y[-1]
-    elif independent_var_value < x[0]:
-        return y[0]
-
-
-@guvectorize([void(float64[:], float64[:], float64, float64[:])], "(n),(n),()->()")
-def linforward(x, y, independent_var_value, result):
-    n = len(x)
-    for j in range(1, n):
-        if (x[j - 1]) < independent_var_value < (x[j]):
-            forward0 = (x[j] * y[j] - x[j - 1] * y[j - 1]) / (x[j] - x[j - 1])
-            forward1 = (x[j + 1] * y[j + 1] - x[j] * y[j]) / (x[j + 1] - x[j])
-            interpolated_forward = forward0 + (
-                (forward1 - forward0) * (independent_var_value - x[j - 1]) / (x[j] - x[j - 1])
-            )
-
-            result[:] = (
-                y[j - 1] * x[j - 1] + interpolated_forward * (independent_var_value - x[j - 1])
-            ) / independent_var_value
-
-
-# piecewise linear
-@njit(cache=True, fastmath=True)
-def bilinearint(x, y, f, x0, y0):
-    w = []
-    n = len(x)
-    xu = min(c for c in x if c >= x0)
-    xl = max(d for d in x if d <= x0)
-    yu = min(g for g in y if g >= y0)
-    yl = max(h for h in y if h <= y0)
-    for j in range(0, n):
-        if xl <= x[j] <= xu and yl <= y[j] <= yu:
-            w.append([x[j], y[j], f[j]])
-    return (
-        (w[0][2] * (w[2][0] - x0) * (w[1][1] - y0))
-        + (w[2][2] * (x0 - w[0][0]) * (w[1][1] - y0))
-        + (w[1][2] * (w[2][0] - x0) * (y0 - w[0][1]))
-        + (w[3][2] * (x0 - w[0][0]) * (y0 - w[0][1]))
-    ) / ((w[2][0] - w[0][0]) * (w[1][1] - w[0][1]))
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, np.datetime64):
-            return str(obj)
-        elif isinstance(obj, date):
-            return obj.strftime("%Y-%m-%d")
-        elif isinstance(obj, datetime):
-            return obj.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            return super().default(obj)
-
-def cashflow_dict_generation(position_id, cashflow_output_data):
-    cashflow_dict = json.dumps(cashflow_output_data.loc[cashflow_output_data['position_id']==position_id].replace("", "-").fillna("-").to_dict("records"), cls=NpEncoder)
-    return cashflow_dict
-
-def sensitivity_dict_generation(sensitivity_output_data):
-    sensitivity_dict = json.dumps([{"Macaulay Duration":sensitivity_output_data["Macaulay Duration"],"Modified Duration":sensitivity_output_data["Modified Duration"],"PV01 per unit":sensitivity_output_data["PV01 per unit"]}])
-    return sensitivity_dict
