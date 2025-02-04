@@ -36,8 +36,8 @@ def compile_extension():
         compiler = "g++"
         # Windows usually does not need -fPIC.
         compile_cmd = (
-            f'{compiler} -O3 -Wall -shared -std=c++14 '
-            f'{pybind11_includes} payment_schedule.cpp -o {module_filename}'
+            f"g++ -O3 -Wall -shared -std=c++14 -fPIC "
+            f"{pybind11_includes} payment_schedule.cpp -o {module_filename}"
         )
     else:
         # On Unix-like systems.
