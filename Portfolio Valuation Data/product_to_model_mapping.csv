@@ -1,73 +1,73 @@
-id,created_by,modified_by,created_date,modified_date,active_from,active_to,product_variant_name,model_name,model_mapping_scenario_analysis_id,is_active_flag,model_code
-34,revolutio_admin.antarescentral,revolutio_admin.antarescentral,29-10-2024 10:29,16-01-2025 15:15,29-10-2024 10:29,05-07-2099 05:30,EMI Loans,None,SCNR_ProdtoModel_001,Yes,56
-9,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,21-09-2024 12:34,21-09-2024 12:34,21-09-2024 12:34,05-07-2099 00:00,Bills Discounted,None,SCNR_ProdtoModel_001,Yes,6
-11,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,21-09-2024 22:03,21-09-2024 22:03,21-09-2024 22:03,05-07-2099 00:00,Fixed Term Loans,None,SCNR_ProdtoModel_001,Yes,20
-12,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,22-09-2024 01:15,22-09-2024 01:15,22-09-2024 01:15,05-07-2099 00:00,Ammortizing Loans,None,SCNR_ProdtoModel_001,Yes,24
-13,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,22-09-2024 03:03,22-09-2024 03:03,22-09-2024 03:03,05-07-2099 00:00,Fixed Coupon Central Government Bonds,None,SCNR_ProdtoModel_001,Yes,3
-14,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,22-09-2024 03:30,22-09-2024 03:32,22-09-2024 03:30,05-07-2099 00:00,Commercial Paper - Liability,None,SCNR_ProdtoModel_001,Yes,3
-15,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,09-10-2024 22:16,09-10-2024 22:16,09-10-2024 22:16,05-07-2099 00:00,Treasury Bills,None,SCNR_ProdtoModel_001,Yes,3
-16,tushar.antarescentral,tushar.antarescentral,21-10-2024 23:44,21-10-2024 23:44,21-10-2024 23:44,05-07-2099 05:30,Bills Discounted,None,SCNR_ProdtoModel_001,Yes,6
-17,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 07:43,24-10-2024 07:43,24-10-2024 07:43,05-07-2099 05:30,Repo,None,SCNR_ProdtoModel_001,Yes,13
-18,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 07:55,24-10-2024 07:55,24-10-2024 07:55,05-07-2099 05:30,Cash Credit and Overdrafts - Availed,None,SCNR_ProdtoModel_001,Yes,43
-19,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 08:07,24-10-2024 08:07,24-10-2024 08:07,05-07-2099 05:30,Cash Credit and Overdrafts - Unavailed,None,SCNR_ProdtoModel_001,Yes,54
-21,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 10:00,24-10-2024 10:00,24-10-2024 10:00,05-07-2099 05:30,Fixed Term Loans - Bank,None,SCNR_ProdtoModel_001,Yes,20
-22,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 10:04,24-10-2024 10:04,24-10-2024 10:04,05-07-2099 05:30,Pass Through Certificate,None,SCNR_ProdtoModel_001,Yes,13
-23,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 10:20,25-10-2024 10:35,25-10-2024 10:20,05-07-2099 05:30,Fixed Interest Certificate of Deposits - Asset,None,SCNR_ProdtoModel_001,Yes,2
-24,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 10:37,25-10-2024 10:37,25-10-2024 10:37,05-07-2099 05:30,Fixed Interest State Development Loans,None,SCNR_ProdtoModel_001,Yes,7
-25,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 10:42,25-10-2024 10:42,25-10-2024 10:42,05-07-2099 05:30,Refinances,None,SCNR_ProdtoModel_001,Yes,41
-26,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 11:40,25-10-2024 11:40,25-10-2024 11:40,05-07-2099 05:30,Undisbursed Loans,None,SCNR_ProdtoModel_001,Yes,53
-27,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 11:52,25-10-2024 11:52,25-10-2024 11:52,05-07-2099 05:30,Subordinate Debt,None,SCNR_ProdtoModel_001,Yes,41
-28,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 11:58,25-10-2024 11:58,25-10-2024 11:58,05-07-2099 05:30,Current Account Deposits,None,SCNR_ProdtoModel_001,Yes,42
-29,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 11:59,25-10-2024 11:59,25-10-2024 11:59,05-07-2099 05:30,Savings Account Deposits,None,SCNR_ProdtoModel_001,Yes,43
-30,revolutio_admin.antarescentral,revolutio_admin.antarescentral,25-10-2024 17:03,25-10-2024 17:03,25-10-2024 17:03,05-07-2099 05:30,Standing Deposit Facility,None,SCNR_ProdtoModel_001,Yes,13
-31,revolutio_admin.antarescentral,revolutio_admin.antarescentral,28-10-2024 12:11,28-10-2024 12:11,28-10-2024 12:11,05-07-2099 05:30,Recurring Deposits,None,SCNR_ProdtoModel_001,Yes,55
-20,revolutio_admin.antarescentral,revolutio_admin.antarescentral,24-10-2024 10:00,29-10-2024 10:10,24-10-2024 10:00,05-07-2099 05:30,Commercial Paper - Asset,None,SCNR_ProdtoModel_001,Yes,6
-32,revolutio_admin.antarescentral,revolutio_admin.antarescentral,29-10-2024 10:18,29-10-2024 10:18,29-10-2024 10:18,05-07-2099 05:30,Fixed Term Deposit - Bank,None,SCNR_ProdtoModel_001,Yes,13
-33,revolutio_admin.antarescentral,revolutio_admin.antarescentral,29-10-2024 10:19,29-10-2024 10:19,29-10-2024 10:19,05-07-2099 05:30,Fixed Term Deposit Placement - Lien Marked,None,SCNR_ProdtoModel_001,Yes,13
-36,revolutio_admin.antarescentral,revolutio_admin.antarescentral,29-10-2024 10:37,29-10-2024 10:37,29-10-2024 10:37,05-07-2099 05:30,Fixed Term Deposit - Cumulative,None,SCNR_ProdtoModel_001,Yes,13
-37,revolutio_admin.antarescentral,revolutio_admin.antarescentral,06-11-2024 14:39,07-11-2024 12:52,06-11-2024 14:39,05-07-2099 05:30,Preshipment - Availed,None,SCNR_ProdtoModel_001,Yes,45
-38,revolutio_admin.antarescentral,revolutio_admin.antarescentral,07-11-2024 18:36,07-11-2024 18:56,07-11-2024 18:36,05-07-2099 05:30,Preshipment - Unavailed,None,SCNR_ProdtoModel_001,Yes,53
-39,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Current Account Deposits,None,Suryoday_ProdtoModel_001,Yes,42
-40,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Term Deposit - Bank,None,Suryoday_ProdtoModel_001,Yes,13
-41,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Term Loans - Bank,None,Suryoday_ProdtoModel_001,Yes,20
-43,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Ammortizing Loans,None,Suryoday_ProdtoModel_001,Yes,24
-8,revolutio_admin2.antarescentral,revolutio_admin.antarescentral,20-09-2024 15:41,13-01-2025 15:44,20-09-2024 15:41,05-07-2099 00:00,FX Forward Contract,None,SCNR_ProdtoModel_001,Yes,2
-42,revolutio_admin2.antarescentral,revolutio_admin.antarescentral,20-11-2024 17:45,16-01-2025 15:16,20-11-2024 17:45,05-07-2099 05:30,EMI Loans,None,Suryoday_ProdtoModel_001,Yes,56
-35,revolutio_admin.antarescentral,revolutio_admin.antarescentral,29-10-2024 10:32,16-01-2025 15:16,29-10-2024 10:32,05-07-2099 05:30,EMI Loans - Housing,None,SCNR_ProdtoModel_001,Yes,56
-10,revolutio_admin2.antarescentral,revolutio_admin.antarescentral,21-09-2024 13:04,16-01-2025 15:17,21-09-2024 13:04,05-07-2099 00:00,EMI Loans - Asset,None,SCNR_ProdtoModel_001,Yes,56
-44,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Repo,None,Suryoday_ProdtoModel_001,Yes,13
-45,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Reverse repo,None,Suryoday_ProdtoModel_001,Yes,13
-46,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Zero Coupon State Development Loans,None,Suryoday_ProdtoModel_001,Yes,2
-47,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Treasury Bills,None,Suryoday_ProdtoModel_001,Yes,31
-48,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Floating Coupon Corporate Bonds,None,Suryoday_ProdtoModel_001,Yes,8
-49,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Certificate of Deposits - Asset,None,Suryoday_ProdtoModel_001,Yes,31
-51,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Cash Credit and Overdrafts - Unavailed,None,Suryoday_ProdtoModel_001,Yes,42
-52,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Cash Credit and Overdrafts - Availed,None,Suryoday_ProdtoModel_001,Yes,43
-54,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Standing Deposit Facility,None,Suryoday_ProdtoModel_001,Yes,13
-55,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Refinances,None,Suryoday_ProdtoModel_001,Yes,24
-56,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Term Deposit - Cumulative,None,Suryoday_ProdtoModel_001,Yes,13
-57,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,EMI Loans - Custom,None,Suryoday_ProdtoModel_001,Yes,41
-58,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Notice Lending,None,Suryoday_ProdtoModel_001,Yes,13
-59,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Undisbursed Loans,None,Suryoday_ProdtoModel_001,Yes,42
-60,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,EMI Loans Custom - Float,None,Suryoday_ProdtoModel_001,Yes,41
-61,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Savings Account Deposits,None,Suryoday_ProdtoModel_001,Yes,43
-62,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Term Deposit,None,Suryoday_ProdtoModel_001,Yes,13
-63,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Interest State Development Loans,None,Suryoday_ProdtoModel_001,Yes,7
-64,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Fixed Coupon Central Government Bonds,None,Suryoday_ProdtoModel_001,Yes,3
-65,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Recurring Deposits,None,Suryoday_ProdtoModel_001,Yes,13
-66,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,IBPC - Borrowing,None,Suryoday_ProdtoModel_001,Yes,13
-67,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,IBPC - Lending,None,Suryoday_ProdtoModel_001,Yes,13
-68,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Term Borrowing,None,Suryoday_ProdtoModel_001,Yes,13
-69,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Term Lending,None,Suryoday_ProdtoModel_001,Yes,13
-70,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Call Borrowing,None,Suryoday_ProdtoModel_001,Yes,13
-71,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Call Lending,None,Suryoday_ProdtoModel_001,Yes,13
-72,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,ECLGS,None,Suryoday_ProdtoModel_001,Yes,41
-73,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,Certificate of Deposits - Liability,None,Suryoday_ProdtoModel_001,Yes,31
-74,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,EMI Loans - Housing,None,Suryoday_ProdtoModel_001,Yes,41
-75,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,20-11-2024 17:45,20-11-2024 17:45,05-07-2099 05:30,FIG,None,Suryoday_ProdtoModel_001,Yes,41
-76,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,25-11-2024 12:16,25-11-2024 12:16,25-11-2024 12:16,05-07-2099 05:30,Non - Convertible Debentures - Asset,None,SCNR_ProdtoModel_001,Yes,6
-53,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,28-11-2024 15:35,20-11-2024 17:45,05-07-2099 05:30,Notice Borrowing,None,Suryoday_ProdtoModel_001,Yes,13
-50,revolutio_admin2.antarescentral,revolutio_admin2.antarescentral,20-11-2024 17:45,28-11-2024 15:32,20-11-2024 17:45,05-07-2099 05:30,Subordinate Debt,None,Suryoday_ProdtoModel_001,Yes,7
-78,revolutio_admin.antarescentral,revolutio_admin.antarescentral,05-12-2024 13:31,05-12-2024 13:31,05-12-2024 13:31,05-07-2099 05:30,FX Forward Contract Split,None,SCNR_ProdtoModel_001,Yes,2
-79,revolutio_admin.antarescentral,revolutio_admin.antarescentral,16-12-2024 18:00,16-12-2024 18:00,16-12-2024 18:00,05-07-2099 05:30,EDI Loans,None,SCNR_ProdtoModel_001,Yes,21
-77,revolutio_admin2.antarescentral,revolutio_admin.antarescentral,25-11-2024 12:20,27-12-2024 15:13,25-11-2024 12:20,05-07-2099 05:30,Zero Coupon Bonds,None,SCNR_ProdtoModel_001,Yes,3
+product_variant_name,model_name,model_mapping_scenario_analysis_id,model_code
+EMI Loans,None,SCNR_ProdtoModel_001,M080
+Bills Discounted,None,SCNR_ProdtoModel_001,M005
+Fixed Term Loans,None,SCNR_ProdtoModel_001,M018
+Ammortizing Loans,None,SCNR_ProdtoModel_001,M023
+Fixed Coupon Central Government Bonds,None,SCNR_ProdtoModel_001,M002
+Commercial Paper - Liability,None,SCNR_ProdtoModel_001,M002
+Treasury Bills,None,SCNR_ProdtoModel_001,M002
+Bills Discounted,None,SCNR_ProdtoModel_001,M005
+Repo,None,SCNR_ProdtoModel_001,M019
+Cash Credit and Overdrafts - Availed,None,SCNR_ProdtoModel_001,M049
+Cash Credit and Overdrafts - Unavailed,None,SCNR_ProdtoModel_001,M050
+Fixed Term Loans - Bank,None,SCNR_ProdtoModel_001,M018
+Pass Through Certificate,None,SCNR_ProdtoModel_001,M019
+Fixed Interest Certificate of Deposits - Asset,None,SCNR_ProdtoModel_001,M001
+Fixed Interest State Development Loans,None,SCNR_ProdtoModel_001,M006
+Refinances,None,SCNR_ProdtoModel_001,M047
+Undisbursed Loans,None,SCNR_ProdtoModel_001,M075
+Subordinate Debt,None,SCNR_ProdtoModel_001,M047
+Current Account Deposits,None,SCNR_ProdtoModel_001,M048
+Savings Account Deposits,None,SCNR_ProdtoModel_001,M049
+Standing Deposit Facility,None,SCNR_ProdtoModel_001,M019
+Recurring Deposits,None,SCNR_ProdtoModel_001,M056
+Commercial Paper - Asset,None,SCNR_ProdtoModel_001,M005
+Fixed Term Deposit - Bank,None,SCNR_ProdtoModel_001,M019
+Fixed Term Deposit Placement - Lien Marked,None,SCNR_ProdtoModel_001,M019
+Fixed Term Deposit - Cumulative,None,SCNR_ProdtoModel_001,M019
+Preshipment - Availed,None,SCNR_ProdtoModel_001,M065
+Preshipment - Unavailed,None,SCNR_ProdtoModel_001,M075
+Current Account Deposits,None,Suryoday_ProdtoModel_001,M048
+Fixed Term Deposit - Bank,None,Suryoday_ProdtoModel_001,M019
+Fixed Term Loans - Bank,None,Suryoday_ProdtoModel_001,M018
+Ammortizing Loans,None,Suryoday_ProdtoModel_001,M023
+FX Forward Contract,None,SCNR_ProdtoModel_001,M001
+EMI Loans,None,Suryoday_ProdtoModel_001,M080
+EMI Loans - Housing,None,SCNR_ProdtoModel_001,M080
+EMI Loans - Asset,None,SCNR_ProdtoModel_001,M080
+Repo,None,Suryoday_ProdtoModel_001,M019
+Reverse repo,None,Suryoday_ProdtoModel_001,M019
+Zero Coupon State Development Loans,None,Suryoday_ProdtoModel_001,M001
+Treasury Bills,None,Suryoday_ProdtoModel_001,M035
+Floating Coupon Corporate Bonds,None,Suryoday_ProdtoModel_001,M007
+Certificate of Deposits - Asset,None,Suryoday_ProdtoModel_001,M035
+Cash Credit and Overdrafts - Unavailed,None,Suryoday_ProdtoModel_001,M048
+Cash Credit and Overdrafts - Availed,None,Suryoday_ProdtoModel_001,M049
+Standing Deposit Facility,None,Suryoday_ProdtoModel_001,M019
+Refinances,None,Suryoday_ProdtoModel_001,M023
+Fixed Term Deposit - Cumulative,None,Suryoday_ProdtoModel_001,M019
+EMI Loans - Custom,None,Suryoday_ProdtoModel_001,M047
+Notice Lending,None,Suryoday_ProdtoModel_001,M019
+Undisbursed Loans,None,Suryoday_ProdtoModel_001,M048
+EMI Loans Custom - Float,None,Suryoday_ProdtoModel_001,M047
+Savings Account Deposits,None,Suryoday_ProdtoModel_001,M049
+Fixed Term Deposit,None,Suryoday_ProdtoModel_001,M019
+Fixed Interest State Development Loans,None,Suryoday_ProdtoModel_001,M006
+Fixed Coupon Central Government Bonds,None,Suryoday_ProdtoModel_001,M002
+Recurring Deposits,None,Suryoday_ProdtoModel_001,M019
+IBPC - Borrowing,None,Suryoday_ProdtoModel_001,M019
+IBPC - Lending,None,Suryoday_ProdtoModel_001,M019
+Term Borrowing,None,Suryoday_ProdtoModel_001,M019
+Term Lending,None,Suryoday_ProdtoModel_001,M019
+Call Borrowing,None,Suryoday_ProdtoModel_001,M019
+Call Lending,None,Suryoday_ProdtoModel_001,M019
+ECLGS,None,Suryoday_ProdtoModel_001,M047
+Certificate of Deposits - Liability,None,Suryoday_ProdtoModel_001,M035
+EMI Loans - Housing,None,Suryoday_ProdtoModel_001,M047
+FIG,None,Suryoday_ProdtoModel_001,M047
+Non - Convertible Debentures - Asset,None,SCNR_ProdtoModel_001,M005
+Notice Borrowing,None,Suryoday_ProdtoModel_001,M019
+Subordinate Debt,None,Suryoday_ProdtoModel_001,M006
+FX Forward Contract Split,None,SCNR_ProdtoModel_001,M001
+EDI Loans,None,SCNR_ProdtoModel_001,M020
+Zero Coupon Bonds,None,SCNR_ProdtoModel_001,M002

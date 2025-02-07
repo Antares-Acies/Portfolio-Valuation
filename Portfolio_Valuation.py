@@ -233,7 +233,7 @@ def sensitivity_dict_generation(sensitivity_output_data):
 
 # When CPU usage exceeds 80%, trashing (excessive paging) may occur, leading to performance degradation.
 cpu_total_count = int(multiprocessing.cpu_count() * 0.8)
-print(cpu_total_count)
+
 func = Value_extraction_pf
 
 def preprocess_position_data(position_data, column_index_dict, reporting_date, cashflow_uploaded_data): 
@@ -1725,6 +1725,7 @@ def final_valuation_fn(config_dict, request, data=None):
             output_df["created_date"] = created_date
             output_df["modified_date"] = modified_date
             cashflow_output_df = output_df
+            cashflow_output_df.to_csv(f"cashflow_output_df_{i}.csv")
             # data_handling(request, output_df, config_dict['outputs']['cashflows']['save']['table'], fast_executemany=True)
             logging.warning(f" writing cashflow  {i}")
             i+=1

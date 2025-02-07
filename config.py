@@ -1,1 +1,1 @@
-DISKSTORE_PATH = "output"
+DISKSTORE_PATH = "output/"

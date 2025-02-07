@@ -2479,7 +2479,7 @@ def Value_extraction_pf(
     Unique_Reference_Id = row[column_index_dict["unique_reference_id"]]
     model_code =  row[column_index_dict["model_code"]]
     product_variant_name = row[column_index_dict["product_variant_name"]]
-
+    logging.warning(f"Unique_Reference_Id:{Unique_Reference_Id}, model_code:{model_code}, product_variant_name:{product_variant_name}")
     Position_Id = row[column_index_dict["position_id"]]
     Valuation_Date = np.array([np.datetime64(row[column_index_dict["reporting_date"]], "D")])
     currency = row[column_index_dict["primary_currency"]]
@@ -2496,9 +2496,11 @@ def Value_extraction_pf(
         Quantity = 1
     holiday_calendar_name = row[column_index_dict["holiday_calendar"]]
     
-    business_days = product_holiday_code.loc[product_holiday_code["product_variant_name"] == product_variant_name, "business_days"].iloc[0]
-    z_spread_calculation = product_holiday_code.loc[product_holiday_code["product_variant_name"] == product_variant_name, "z_spread_calculation"].iloc[0]
-
+    # business_days = product_holiday_code.loc[product_holiday_code["product_variant_name"] == product_variant_name, "business_days"].iloc[0]
+    # z_spread_calculation = product_holiday_code.loc[product_holiday_code["product_variant_name"] == product_variant_name, "z_spread_calculation"].iloc[0]
+    # logging.warning(f"business_days:{business_days}, z_spread_calculation:{z_spread_calculation}")
+    business_days = "1111100"
+    z_spread_calculation = 0
     if row[column_index_dict["model_code"]] in [
         "M027",
         "M014",
@@ -11928,6 +11930,7 @@ def Value_extraction_pf(
         #  M080 EMI loans with Pricipal Capping to outstanding
         #  M079 process all EMI position as Fixed Position's
         model_code = row[column_index_dict["model_code"]]
+        logging.warning(f"in:{model_code}")
         final_output_dict = {}
         unique_reference_Id = row[column_index_dict["unique_reference_id"]]
         issue_date = np.array(row[column_index_dict["issue_date"]], dtype="datetime64[D]")
