@@ -20,12 +20,12 @@ import numpy_financial as npf
 from pandas.core.algorithms import isin, mode
 from scipy import optimize
 from scipy.interpolate import CubicSpline
-from Core.users.computation_studio_lib import (
-    OIS_Bootstrapping,
-    Options_Pricing,
-    Single_Curve_Bootstrapping,
-    Swap_Curve,
-)
+# from Core.users.computation_studio_lib import (
+#     OIS_Bootstrapping,
+#     Options_Pricing,
+#     Single_Curve_Bootstrapping,
+#     Swap_Curve,
+# )
 from Core.users.computations.db_centralised_function import read_data_func, update_data_func
 from .Conventions import conventions
 
@@ -28128,128 +28128,6 @@ def credit_spread_adjustments_model(row, column_index_dict, config_dict, **kwarg
             curve_data["credit_spread"] = 0
 
     return curve_data
-
-
-def bootstrapping_model(row, column_index_dict, config_dict, **kwargs):
-    curve_name = if_key_exists(row, column_index_dict, "discounting_curve")
-    config_dict = config_dict[curve_name]
-    credit_spread_applicability = config_dict["credit_spread_applicability"]
-    if credit_spread_applicability == "On par rates":
-        cs_curve_name = str(if_key_exists(row, column_index_dict, "credit_spread_curve"))
-        if cs_curve_name == "None" or cs_curve_name == "nan":
-            cs_curve_name = ""
-        else:
-            cs_curve_name = " | " + cs_curve_name
-        curve_name = curve_name + cs_curve_name
-    bootstrapping_method = config_dict["bootstrap_algorithm"]
-    compounding_frequency = config_dict["compounding_frequency_output"]
-    funding_spread = float(config_dict["funding_spread"]) / 100
-
-    ## filtering market data based on curve name
-    market_data = kwargs["market_data"]
-    original_market_data = kwargs["original_market_data"]
-    if config_dict["extract_from_database"] == "Yes":
-        market_database_data = original_market_data.loc[
-            original_market_data["curve_name"] == curve_name + " Zero"
-        ]
-        if len(market_database_data) > 0:
-            market_database_data.rename(
-                columns={"tenor": "time_to_maturity", "rate": "zero_rate"}, inplace=True
-            )
-            market_database_data.drop(columns=["curve_component", "tenor_value", "tenor_unit"], inplace=True)
-            market_database_data["curve_name"] = curve_name
-            market_database_data["output_frequency"] = compounding_frequency
-
-            market_database_data["zero_rate"] = market_database_data["zero_rate"] * 100
-            return market_database_data
-
-    market_data = market_data.loc[market_data["curve_name"] == curve_name]
-    kwargs["market_data"] = market_data
-    ## calling function based on bootstrap method chosen
-    if bootstrapping_method == "GSEC Bond Curve Bootstrapping":
-        config_dict = {
-            "inputs": {
-                "option_config": {
-                    "Tenor": "tenor",
-                    "YTM": "rate",
-                    "Par Lim Tenor": config_dict["bootstrap_short_term_tenor_limit"],
-                    "Annual": config_dict["compounding_frequency_after_st_tenor"],
-                    "Extraction Date": if_key_exists(row, column_index_dict, "reporting_date"),
-                    "Output CF": config_dict["compounding_frequency_output"],
-                }
-            }
-        }
-        results = Single_Curve_Bootstrapping.singlecurve(kwargs, config_dict)[1]
-        results.columns = [
-            "time_to_maturity",
-            "market_rate",
-            "zero_rate",
-            "extraction_date",
-        ]
-    elif bootstrapping_method == "OIS Curve Bootstrapping":
-        oisb = OIS_Bootstrapping.OIS_Bootstrapping()
-        results = oisb.spot_curve(
-            df=market_data.reset_index(),
-            tenor_col="tenor",
-            ytm_col="rate",
-            ext_date=if_key_exists(row, column_index_dict, "reporting_date"),
-            st_tenor=float(config_dict["bootstrap_short_term_tenor_limit"]),
-            method="fbil",
-            fs=funding_spread,
-            output_cf=config_dict["compounding_frequency_output"],
-            cf_pre_st=config_dict["compounding_frequency_st_tenor"],
-            cf_post_st=config_dict["compounding_frequency_after_st_tenor"],
-            curve_name=curve_name,
-            curve_data=config_dict["save_to_database"],
-            curve_quote_data=config_dict["save_to_database"],
-            request_user=kwargs["request_user"],
-            configuration_date=if_key_exists(row, column_index_dict, "reporting_date"),
-        )
-        results = pd.DataFrame.from_dict(results[0]["Table"])
-        results.columns = ["curve_name", "time_to_maturity", "market_rate", "zero_rate", "extraction_date"]
-    elif bootstrapping_method == "Swap Curve Bootstrapping":
-        config_dict = {
-            "inputs": {
-                "option_config": {
-                    "s_tenor": "tenor",
-                    "m_tenor": "tenor",
-                    "l_tenor": "tenor",
-                    "s_rate": "rate",
-                    "m_rate": "rate",
-                    "l_rate": "rate",
-                    "YTM": "rate",
-                    "Extraction Date": if_key_exists(row, column_index_dict, "reporting_date"),
-                    "Short Term Tenor": config_dict["bootstrap_short_term_tenor_limit"],
-                    "Medium Term Tenor": config_dict["bootstrap_medium_term_tenor_limit"],
-                    "Short CF": config_dict["compounding_frequency_st_tenor"],
-                    "Medium CF": config_dict["compounding_frequency_after_st_tenor"],
-                    "Long CF": config_dict["compounding_frequency_after_st_tenor"],
-                    "Output CF": config_dict["compounding_frequency_output"],
-                    "Medium Instrument": "future",
-                    "Swap Payment Frequency": config_dict["compounding_frequency_after_st_tenor"],
-                }
-            }
-        }
-        results = Swap_Curve.swap(kwargs, config_dict)[1]
-
-    results["curve_name"] = curve_name
-    results["output_frequency"] = compounding_frequency
-
-    results["market_rate"] = results["market_rate"] * 100 - funding_spread
-    results["zero_rate"] = results["zero_rate"] * 100
-    market_data.rename(columns={"tenor": "time_to_maturity"}, inplace=True)
-
-    ## Display for credit spread impact
-    if credit_spread_applicability == "On par rates":
-        results = results.merge(
-            market_data[["curve_name", "time_to_maturity", "credit_spread"]],
-            on=["curve_name", "time_to_maturity"],
-            how="left",
-        )
-
-        results["credit_spread"] = results["credit_spread"].interpolate(method="linear")
-        results["base_market_rate"] = results["market_rate"] - results["credit_spread"]
-    return results
 
 
 def interpolation_function(config_dict, request, data):

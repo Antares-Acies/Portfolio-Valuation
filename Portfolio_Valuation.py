@@ -14,8 +14,8 @@ import pyarrow.parquet as pq
 from pathlib import Path
 
 
-from Core.users.computations.db_centralised_function import read_data_func, data_handling
-from config.settings.base import DISKSTORE_PATH
+# from Core.users.computations.db_centralised_function import read_data_func, data_handling
+from config import DISKSTORE_PATH
 
 
 from Valuation_Models import Valuation_Models
@@ -25,7 +25,7 @@ import random
 from numba import float64, guvectorize, int64, njit, void
 from datetime import date, datetime
 from multiprocessing import Pool
-from Helper import completion_percent
+from helper import completion_percent
 
 
 def holiday_code_generator(product_data_row, weekday_data):
@@ -688,7 +688,7 @@ def central_curve_processing(
     return curve_data, credit_spread_data
 
 
-def final_valuation_fn(config_dict, request, data=None):
+def final_valuation_fn(config_dict, data=None):
     
     request_user = request.user.username
     valuation_date = config_dict["inputs"]["Valuation_Date"]["val_date"]
@@ -710,56 +710,82 @@ def final_valuation_fn(config_dict, request, data=None):
         raise ValueError(f"No position data found for {valuation_date} . Please try again.")
     
     
-    if data["nmd_data"] is not None:
-        NMD_adjustments = data["nmd_data"].copy()
-    else:
-        NMD_adjustments = pd.DataFrame()
-    if data["product_data"] is not None:
-        product_data = data["product_data"].copy()
-    else:
-        product_data = pd.DataFrame()
-    if data["dpd_data"] is not None:
-        dpd_ruleset = data["dpd_data"].copy()
-    else:
-        dpd_ruleset = pd.DataFrame()
-    if data["overdue_data"] is not None:
-        overdue_bucketing_data = data["overdue_data"].copy()
-    else:
-        overdue_bucketing_data = pd.DataFrame()
-    if data["dpd_schedule"] is not None:
-        dpd_schedule = data["dpd_schedule"].copy()
-    else:
-        dpd_schedule = pd.DataFrame()
-    if data["cashflow_data_uploaded"] is not None:
-        cashflow_uploaded_data = data["cashflow_data_uploaded"].copy()
-        
-        #import as fast excute require consitence uploaded data are error prone
-        date_columns = [col for col in cashflow_uploaded_data.columns if '_date' in col]   
-        for date in date_columns:
-            cashflow_uploaded_data[date] = pd.to_datetime(cashflow_uploaded_data[date]).dt.date
+    NMD_adjustments = data["nmd_data"].copy()
+    product_data = data["product_data"].copy()
+    dpd_ruleset = data["dpd_data"].copy()
+    overdue_bucketing_data = data["overdue_data"].copy()
+    dpd_schedule = data["dpd_schedule"].copy()
+    mtm_data = data["market_data"].copy()
+    repayment_schedule = data["repayment_data"].copy()
+    repayment_schedule = repayment_schedule.groupby(['payment_date','position_id'])['payment_amount'].sum().reset_index()
+    product_model_mapper = data["product_model_mapper_table"].copy()
+    cashflow_uploaded_data = data["cashflow_data_uploaded"].copy()
 
-        float_columns = ['cashflow', 'time_to_maturity', 'discount_factor', 'present_value']
-        existing_float_columns = [col for col in float_columns if col in cashflow_uploaded_data.columns]
-        for col in existing_float_columns:
-            cashflow_uploaded_data[col] = pd.to_numeric(cashflow_uploaded_data[col], errors='coerce').fillna(0.0)
-        
-    else:
-        cashflow_uploaded_data = pd.DataFrame()
-    if data["market_data"] is not None and len(data["market_data"])>0:
-        mtm_data = data["market_data"].copy()
-    else:
-        mtm_data = pd.DataFrame(columns=['extract_date','security_identifier','asset_class','quoted_price','yield','volatility'])
     
-    if data["repayment_data"] is not None:
-        repayment_schedule = data["repayment_data"].copy()
-        repayment_schedule = repayment_schedule.groupby(['payment_date','position_id'])['payment_amount'].sum().reset_index()
+    #import as fast excute require consitence uploaded data are error prone
+    date_columns = [col for col in cashflow_uploaded_data.columns if '_date' in col]   
+    for date in date_columns:
+        cashflow_uploaded_data[date] = pd.to_datetime(cashflow_uploaded_data[date]).dt.date
 
-    else:
-        repayment_schedule = pd.DataFrame()
-    if data["product_model_mapper_table"] is not None:
-        product_model_mapper = data["product_model_mapper_table"].copy()
-    else:
-        product_model_mapper = pd.DataFrame()
+    float_columns = ['cashflow', 'time_to_maturity', 'discount_factor', 'present_value']
+    existing_float_columns = [col for col in float_columns if col in cashflow_uploaded_data.columns]
+    for col in existing_float_columns:
+        cashflow_uploaded_data[col] = pd.to_numeric(cashflow_uploaded_data[col], errors='coerce').fillna(0.0)
+    
+    
+
+    # if data["nmd_data"] is not None:
+    #     NMD_adjustments = data["nmd_data"].copy()
+    # else:
+    #     NMD_adjustments = pd.DataFrame()
+    # if data["product_data"] is not None:
+    #     product_data = data["product_data"].copy()
+    # else:
+    #     product_data = pd.DataFrame()
+    # if data["dpd_data"] is not None:
+    #     dpd_ruleset = data["dpd_data"].copy()
+    # else:
+    #     dpd_ruleset = pd.DataFrame()
+    # if data["overdue_data"] is not None:
+    #     overdue_bucketing_data = data["overdue_data"].copy()
+    # else:
+    #     overdue_bucketing_data = pd.DataFrame()
+    # if data["dpd_schedule"] is not None:
+    #     dpd_schedule = data["dpd_schedule"].copy()
+    # else:
+    #     dpd_schedule = pd.DataFrame()
+
+    # if data["cashflow_data_uploaded"] is not None:
+    #     cashflow_uploaded_data = data["cashflow_data_uploaded"].copy()
+        
+    #     #import as fast excute require consitence uploaded data are error prone
+    #     date_columns = [col for col in cashflow_uploaded_data.columns if '_date' in col]   
+    #     for date in date_columns:
+    #         cashflow_uploaded_data[date] = pd.to_datetime(cashflow_uploaded_data[date]).dt.date
+
+    #     float_columns = ['cashflow', 'time_to_maturity', 'discount_factor', 'present_value']
+    #     existing_float_columns = [col for col in float_columns if col in cashflow_uploaded_data.columns]
+    #     for col in existing_float_columns:
+    #         cashflow_uploaded_data[col] = pd.to_numeric(cashflow_uploaded_data[col], errors='coerce').fillna(0.0)
+        
+    # else:
+    #     cashflow_uploaded_data = pd.DataFrame()
+
+    # if data["market_data"] is not None and len(data["market_data"])>0:
+    #     mtm_data = data["market_data"].copy()
+    # else:
+    #     mtm_data = pd.DataFrame(columns=['extract_date','security_identifier','asset_class','quoted_price','yield','volatility'])
+    
+    # if data["repayment_data"] is not None:
+    #     repayment_schedule = data["repayment_data"].copy()
+    #     repayment_schedule = repayment_schedule.groupby(['payment_date','position_id'])['payment_amount'].sum().reset_index()
+    # else:
+    #     repayment_schedule = pd.DataFrame()
+        
+    # if data["product_model_mapper_table"] is not None:
+    #     product_model_mapper = data["product_model_mapper_table"].copy()
+    # else:
+    #     product_model_mapper = pd.DataFrame()
 
     if (
         "hierarchy_name" in val_date_filtered.columns
@@ -775,172 +801,260 @@ def final_valuation_fn(config_dict, request, data=None):
 
     holiday_code_generation = np.vectorize(holiday_code_generator)
 
-    weekday_data = json.dumps(
-        read_data_func(
-            request,
-            {
-                "inputs": {
-                    "Data_source": "Database",
-                    "Table": "week_definition",
-                    "Columns": ["id", "day"],
-                },
-                "condition": [],
-            },
-        ).to_dict("list")
-    )
+    # data_path_dict for replacement of read_data_func
+    data_directory = "Read Data Func Data"
+    empty_data_directory = "Read Data Func Sample Data"
+    data_path_dict = {
+        "weekday_data" : "week_definition.csv", 
+        "curve_repo_data" : "ir_curve_repository.csv", 
+        "curve_components_data" : "ir_curve_components.csv", 
+        "vol_repo_data" : "volatility_surface_repository.csv", 
+        "vol_components_data" : "volatility_surface_components.csv", 
+        "cs_curve_repo_data" : "cs_curve_repository.csv", 
+        "cs_curve_components_data" : "cs_curve_components.csv", 
+        "custom_daycount_conventions" : "custom_daycount_conventions.csv", 
+        "holiday_calendar" : "Holiday_Calendar_Repository.csv", 
+        "currency_data" : "CurrencyMaster.csv", 
+        "vix_data" : "", 
+    }
+    read_data_func_data = {}
+    for table, path in data_path_dict.items():
+        try:
+            full_path = os.join(data_directory, path)
+            read_data_func_data[table] = pd.read_csv(full_path)
+        except FileNotFoundError:
+            full_path = os.join(empty_data_directory, path)
+            read_data_func_data[table] = pd.read_csv(full_path)
 
-    product_holiday_code = pd.concat(
-        holiday_code_generation(product_data.fillna("None").to_dict("records"), weekday_data),
-        ignore_index=True,
-    )
+    weekday_data = read_data_func_data['weekday_data']
+    curve_repo_data = read_data_func_data['curve_repo_data']
+    curve_components_data = read_data_func_data['curve_components_data']
+    vol_repo_data = read_data_func_data['vol_repo_data']
+    vol_components_data = read_data_func_data['vol_components_data']
+    cs_curve_repo_data = read_data_func_data['cs_curve_repo_data']
+    cs_curve_components_data = read_data_func_data['cs_curve_components_data']
+    custom_daycount_conventions = read_data_func_data['custom_daycount_conventions']
+    holiday_calendar = read_data_func_data['holiday_calendar']
+    currency_data = read_data_func_data['currency_data']
+    vix_data = read_data_func_data['vix_data']
 
-    curve_repo_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "ir_curve_repository",
-                "Columns": [
-                    "configuration_date",
-                    "curve_name",
-                    "curve_components",
-                    "interpolation_algorithm",
-                    "extrapolation_algorithm",
-                    "compounding_frequency_output",
-                    'day_count',
-                ],
-            },
-            "condition": [
-                {
-                    "column_name": "configuration_date",
-                    "condition": "Smaller than equal to",
-                    "input_value": str(valuation_date),
-                    "and_or": "",
-                },
-            ],
-        },
-    )
-    curve_repo_data = curve_repo_data.sort_values("configuration_date", ascending=False).drop_duplicates(
-        subset=["curve_name"]
-    )
-    curve_components_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "ir_curve_components",
-                "Columns": ["id", "curve_component", "tenor_value", "tenor_unit"],
-            },
-            "condition": [],
-        },
-    )
+    # weekday_data = json.dumps(
+    #     read_data_func(
+    #         request,
+    #         {
+    #             "inputs": {
+    #                 "Data_source": "Database",
+    #                 "Table": "week_definition",
+    #                 "Columns": ["id", "day"],
+    #             },
+    #             "condition": [],
+    #         },
+    #     ).to_dict("list")
+    # )
+
+    # curve_repo_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "ir_curve_repository",
+    #             "Columns": [
+    #                 "configuration_date",
+    #                 "curve_name",
+    #                 "curve_components",
+    #                 "interpolation_algorithm",
+    #                 "extrapolation_algorithm",
+    #                 "compounding_frequency_output",
+    #                 'day_count',
+    #             ],
+    #         },
+    #         "condition": [
+    #             {
+    #                 "column_name": "configuration_date",
+    #                 "condition": "Smaller than equal to",
+    #                 "input_value": str(valuation_date),
+    #                 "and_or": "",
+    #             },
+    #         ],
+    #     },
+    # )
+
+
+    # curve_components_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "ir_curve_components",
+    #             "Columns": ["id", "curve_component", "tenor_value", "tenor_unit"],
+    #         },
+    #         "condition": [],
+    #     },
+    # )
     if any(
         model in ["M027", "M014", "M015", "M016", "M017", "M040", "M041", "M042", "M043", "M044"]
         for model in val_date_filtered["model_code"].tolist()
     ):
-        vol_repo_data = read_data_func(
-            request,
-            {
-                "inputs": {
-                    "Data_source": "Database",
-                    "Table": "volatility_surface_repository",
-                    "Columns": [
-                        "configuration_date",
-                        "vol_surface_name",
-                        "vol_surface_components",
-                        "interpolation_smile",
-                        "interpolation_tenor",
-                        "extrapolation_smile",
-                        "extrapolation_tenor",
-                        "tenor_interpolation_parameter",
-                        "smile_interpolation_parameter",
-                        "asset_class",
-                    ],
-                },
-                "condition": [
-                    {
-                        "column_name": "configuration_date",
-                        "condition": "Smaller than equal to",
-                        "input_value": str(valuation_date),
-                        "and_or": "",
-                    },
-                ],
-            },
-        )
+        # vol_repo_data = read_data_func(
+        #     request,
+        #     {
+        #         "inputs": {
+        #             "Data_source": "Database",
+        #             "Table": "volatility_surface_repository",
+        #             "Columns": [
+        #                 "configuration_date",
+        #                 "vol_surface_name",
+        #                 "vol_surface_components",
+        #                 "interpolation_smile",
+        #                 "interpolation_tenor",
+        #                 "extrapolation_smile",
+        #                 "extrapolation_tenor",
+        #                 "tenor_interpolation_parameter",
+        #                 "smile_interpolation_parameter",
+        #                 "asset_class",
+        #             ],
+        #         },
+        #         "condition": [
+        #             {
+        #                 "column_name": "configuration_date",
+        #                 "condition": "Smaller than equal to",
+        #                 "input_value": str(valuation_date),
+        #                 "and_or": "",
+        #             },
+        #         ],
+        #     },
+        # )
+
+        vol_repo_data = vol_repo_data.loc[vol_repo_data['configuration_date'] <= str(valuation_date)].reset_index()
         vol_repo_data = vol_repo_data.sort_values("configuration_date", ascending=False).drop_duplicates(
             subset=["vol_surface_name"]
         )
-        vol_components_data = read_data_func(
-            request,
-            {
-                "inputs": {
-                    "Data_source": "Database",
-                    "Table": "volatility_surface_components",
-                    "Columns": ["id", "surface_component", "tenor_value", "tenor_unit", "delta"],
-                },
-                "condition": [],
-            },
-        )
-    else:
-        vol_repo_data = pd.DataFrame()
-        vol_components_data = pd.DataFrame()
+        # vol_components_data = read_data_func(
+        #     request,
+        #     {
+        #         "inputs": {
+        #             "Data_source": "Database",
+        #             "Table": "volatility_surface_components",
+        #             "Columns": ["id", "surface_component", "tenor_value", "tenor_unit", "delta"],
+        #         },
+        #         "condition": [],
+        #     },
+        # )
+    # else:
+    #     vol_repo_data = pd.DataFrame()
+    #     vol_components_data = pd.DataFrame()
 
-    cs_curve_repo_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "cs_curve_repository",
-                "Columns": [
-                    "configuration_date",
-                    "curve_name",
-                    "curve_components",
-                    "interpolation_algorithm",
-                    "extrapolation_algorithm",
-                    'day_count',
-                ],
-            },
-            "condition": [
-                {
-                    "column_name": "configuration_date",
-                    "condition": "Smaller than equal to",
-                    "input_value": str(valuation_date),
-                    "and_or": "",
-                },
-            ],
-        },
+    # cs_curve_repo_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "cs_curve_repository",
+    #             "Columns": [
+    #                 "configuration_date",
+    #                 "curve_name",
+    #                 "curve_components",
+    #                 "interpolation_algorithm",
+    #                 "extrapolation_algorithm",
+    #                 'day_count',
+    #             ],
+    #         },
+    #         "condition": [
+    #             {
+    #                 "column_name": "configuration_date",
+    #                 "condition": "Smaller than equal to",
+    #                 "input_value": str(valuation_date),
+    #                 "and_or": "",
+    #             },
+    #         ],
+    #     },
+    # )
+    
+    # cs_curve_components_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "cs_curve_components",
+    #             "Columns": ["id", "curve_component", "tenor_value", "tenor_unit"],
+    #         },
+    #         "condition": [],
+    #     },
+    # )
+    # custom_daycount_conventions = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "custom_daycount_conventions",
+    #             "Columns": [
+    #                 "convention_name",
+    #                 "numerator",
+    #                 "denominator",
+    #                 "numerator_adjustment",
+    #                 "denominator_adjustment",
+    #             ],
+    #         },
+    #         "condition": [],
+    #     },
+    # )
+
+    
+    # holiday_calendar = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "Holiday_Calendar_Repository",
+    #             "Columns": ["holiday_calendar", "holiday_date"],
+    #         },
+    #         "condition": [],
+    #     },
+    # )
+    # currency_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "CurrencyMaster",
+    #             "Columns": ["currency_code", "default_holiday_calendar"],
+    #         },
+    #         "condition": [],
+    #     },
+    # )
+
+    # vix_data = read_data_func(
+    #     request,
+    #     {
+    #         "inputs": {
+    #             "Data_source": "Database",
+    #             "Table": "vix",
+    #             "Columns": ["extract_date", "vix"],
+    #         },
+    #         "condition": [
+    #             {
+    #                 "column_name": "extract_date",
+    #                 "condition": "Equal to",
+    #                 "input_value": str(valuation_date),
+    #                 "and_or": "",
+    #             },
+    #         ],
+    #     },
+    # )
+    
+    product_holiday_code = pd.concat(
+        holiday_code_generation(product_data.fillna("None").to_dict("records"), weekday_data),
+        ignore_index=True,
     )
+    curve_repo_data = curve_repo_data.loc[curve_repo_data['configuration_date'] <= str(valuation_date)].reset_index()
+    curve_repo_data = curve_repo_data.sort_values("configuration_date", ascending=False).drop_duplicates(
+        subset=["curve_name"]
+    )
+    cs_curve_repo_data = cs_curve_repo_data.loc[cs_curve_repo_data['configuration_date'] <= str(valuation_date)].reset_index()
     cs_curve_repo_data = cs_curve_repo_data.sort_values(
         "configuration_date", ascending=False
     ).drop_duplicates(subset=["curve_name"])
-    cs_curve_components_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "cs_curve_components",
-                "Columns": ["id", "curve_component", "tenor_value", "tenor_unit"],
-            },
-            "condition": [],
-        },
-    )
-    custom_daycount_conventions = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "custom_daycount_conventions",
-                "Columns": [
-                    "convention_name",
-                    "numerator",
-                    "denominator",
-                    "numerator_adjustment",
-                    "denominator_adjustment",
-                ],
-            },
-            "condition": [],
-        },
-    )
+
     if "strike_price" in val_date_filtered.columns and "put_call_type" in val_date_filtered.columns:
         underlying_position_data = val_date_filtered.loc[
             :,
@@ -1004,47 +1118,7 @@ def final_valuation_fn(config_dict, request, data=None):
         ignore_index=True,
     )
     mtm_data["extract_date"] = mtm_data["extract_date"].astype('datetime64[ns]')
-    holiday_calendar = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "Holiday_Calendar_Repository",
-                "Columns": ["holiday_calendar", "holiday_date"],
-            },
-            "condition": [],
-        },
-    )
-    currency_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "CurrencyMaster",
-                "Columns": ["currency_code", "default_holiday_calendar"],
-            },
-            "condition": [],
-        },
-    )
-
-    vix_data = read_data_func(
-        request,
-        {
-            "inputs": {
-                "Data_source": "Database",
-                "Table": "vix",
-                "Columns": ["extract_date", "vix"],
-            },
-            "condition": [
-                {
-                    "column_name": "extract_date",
-                    "condition": "Equal to",
-                    "input_value": str(valuation_date),
-                    "and_or": "",
-                },
-            ],
-        },
-    )
+    vix_data = vix_data.loc[vix_data['extract_date'] == str(valuation_date)]
 
     table_cols = val_date_filtered.columns
     index_list = []
@@ -1064,7 +1138,7 @@ def final_valuation_fn(config_dict, request, data=None):
     paths = {
         # 'cashflow': f'{DISKSTORE_PATH}/Cashflow_Engine_Outputs/Cashflow/',
         # 'measures': f'{DISKSTORE_PATH}/Cashflow_Engine_Outputs/Measures/',
-        'Platform Configs': f'/opt/revolutio/Platform_Configs/'
+        'Information': f'{DISKSTORE_PATH}/Cashflow_Engine_Outputs/Information/',
     }
 
     total_files_removed = 0
@@ -1640,7 +1714,7 @@ def final_valuation_fn(config_dict, request, data=None):
             output_df["created_date"] = created_date
             output_df["modified_date"] = modified_date
             cashflow_output_df = output_df
-            data_handling(request, output_df, config_dict['outputs']['cashflows']['save']['table'], fast_executemany=True)
+            # data_handling(request, output_df, config_dict['outputs']['cashflows']['save']['table'], fast_executemany=True)
             logging.warning(f" writing cashflow  {i}")
             i+=1
             output_df = []
@@ -1659,7 +1733,7 @@ def final_valuation_fn(config_dict, request, data=None):
             output_df["created_date"] = created_date
             output_df["modified_date"] = modified_date
             measures_output_df = output_df
-            data_handling(request, output_df, config_dict['outputs']['measures']['save']['table'], fast_executemany=True)
+            # data_handling(request, output_df, config_dict['outputs']['measures']['save']['table'], fast_executemany=True)
             logging.warning(f" writing measures  {i}")
             i+=1
             output_df = []
