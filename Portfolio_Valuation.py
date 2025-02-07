@@ -18,7 +18,7 @@ from pathlib import Path
 from config import DISKSTORE_PATH
 
 
-from Valuation_Models import Valuation_Models
+from Valuation_Models import Valuation_Models, Value_extraction_pf
 import pyarrow as pa
 import pyarrow.parquet as pq
 import random
@@ -33,7 +33,10 @@ def holiday_code_generator(product_data_row, weekday_data):
         holiday_weekends = list(json.loads(product_data_row["weekend_definition"]).keys())
     else:
         holiday_weekends = "None"
+    print("here1")
+    print(weekday_data)
     weekday_data = json.loads(weekday_data)
+    print("here2")
     weekday_dataframe = pd.DataFrame(weekday_data)
     if holiday_weekends != "None":
         holidays = []
@@ -230,7 +233,8 @@ def sensitivity_dict_generation(sensitivity_output_data):
 
 # When CPU usage exceeds 80%, trashing (excessive paging) may occur, leading to performance degradation.
 cpu_total_count = int(multiprocessing.cpu_count() * 0.8)
-func = Valuation_Models.Value_extraction_pf
+print(cpu_total_count)
+func = Value_extraction_pf
 
 def preprocess_position_data(position_data, column_index_dict, reporting_date, cashflow_uploaded_data): 
     
@@ -688,9 +692,9 @@ def central_curve_processing(
     return curve_data, credit_spread_data
 
 
-def final_valuation_fn(config_dict, data=None):
-    
-    request_user = request.user.username
+def final_valuation_fn(config_dict, request, data=None):
+    start_time = time.time()
+    request_user = request.user
     valuation_date = config_dict["inputs"]["Valuation_Date"]["val_date"]
     cf_analysis_id = config_dict["inputs"]["CF_Analysis_Id"]["cf_analysis_id"]
 
@@ -702,6 +706,10 @@ def final_valuation_fn(config_dict, data=None):
     if not valuation_date:  # This checks for both None and empty string
         raise ValueError("Please reconfigure valuation date in Portfolio valuation element")
     
+    date_columns = [col for col in val_date_filtered.columns if re.search(r'_date$', col)]
+    for col in date_columns:
+        val_date_filtered[col] = pd.to_datetime(val_date_filtered[col], errors='coerce')
+
     val_date_filtered = val_date_filtered[val_date_filtered["reporting_date"] == pd.to_datetime(valuation_date) ]
     val_date_filtered = val_date_filtered.drop_duplicates(subset=['position_id'])
     val_date_filtered = val_date_filtered.sort_values(by='position_id')
@@ -725,7 +733,7 @@ def final_valuation_fn(config_dict, data=None):
     #import as fast excute require consitence uploaded data are error prone
     date_columns = [col for col in cashflow_uploaded_data.columns if '_date' in col]   
     for date in date_columns:
-        cashflow_uploaded_data[date] = pd.to_datetime(cashflow_uploaded_data[date]).dt.date
+        cashflow_uploaded_data[date] = pd.to_datetime(cashflow_uploaded_data[date], errors='coerce').dt.date
 
     float_columns = ['cashflow', 'time_to_maturity', 'discount_factor', 'present_value']
     existing_float_columns = [col for col in float_columns if col in cashflow_uploaded_data.columns]
@@ -815,15 +823,15 @@ def final_valuation_fn(config_dict, data=None):
         "custom_daycount_conventions" : "custom_daycount_conventions.csv", 
         "holiday_calendar" : "Holiday_Calendar_Repository.csv", 
         "currency_data" : "CurrencyMaster.csv", 
-        "vix_data" : "", 
+        "vix_data" : "vix.csv", 
     }
     read_data_func_data = {}
     for table, path in data_path_dict.items():
         try:
-            full_path = os.join(data_directory, path)
+            full_path = os.path.join(data_directory, path)
             read_data_func_data[table] = pd.read_csv(full_path)
         except FileNotFoundError:
-            full_path = os.join(empty_data_directory, path)
+            full_path = os.path.join(empty_data_directory, path)
             read_data_func_data[table] = pd.read_csv(full_path)
 
     weekday_data = read_data_func_data['weekday_data']
@@ -1042,10 +1050,12 @@ def final_valuation_fn(config_dict, data=None):
     #     },
     # )
     
-    product_holiday_code = pd.concat(
-        holiday_code_generation(product_data.fillna("None").to_dict("records"), weekday_data),
-        ignore_index=True,
-    )
+    # product_holiday_code = pd.concat(
+    #     holiday_code_generation(product_data.fillna("None").to_dict("records"), weekday_data),
+    #     ignore_index=True,
+    # )
+    product_holiday_code = pd.DataFrame()
+
     curve_repo_data = curve_repo_data.loc[curve_repo_data['configuration_date'] <= str(valuation_date)].reset_index()
     curve_repo_data = curve_repo_data.sort_values("configuration_date", ascending=False).drop_duplicates(
         subset=["curve_name"]
@@ -1086,29 +1096,29 @@ def final_valuation_fn(config_dict, data=None):
         .unique()
         .tolist()
     )
-    if (val_date_filtered["underlying_position_id"].str.contains(",")).any():
-        a = val_date_filtered["underlying_position_id"].unique().tolist()
-        b = set()
-        for i in range(len(a)):
-            temp = a[i].split(",")
-            for j in temp:
-                b.add(j)
-        c = list(b)
-        position_security_id += c
-    else:
-        position_security_id += (
-            val_date_filtered[val_date_filtered["underlying_position_id"].notna()]["underlying_position_id"]
-            .unique()
-            .tolist()
-        )
-    position_security_id += curve_components_data["curve_component"].unique().tolist()
-    position_security_id += (
-        underlying_position_data[underlying_position_data["underlying_position_id"].notna()][
-            "underlying_position_id"
-        ]
-        .unique()
-        .tolist()
-    )
+    # if (val_date_filtered["underlying_position_id"].str.contains(",")).any():
+    #     a = val_date_filtered["underlying_position_id"].unique().tolist()
+    #     b = set()
+    #     for i in range(len(a)):
+    #         temp = a[i].split(",")
+    #         for j in temp:
+    #             b.add(j)
+    #     c = list(b)
+    #     position_security_id += c
+    # else:
+    #     position_security_id += (
+    #         val_date_filtered[val_date_filtered["underlying_position_id"].notna()]["underlying_position_id"]
+    #         .unique()
+    #         .tolist()
+    #     )
+    # position_security_id += curve_components_data["curve_component"].unique().tolist()
+    # position_security_id += (
+    #     underlying_position_data[underlying_position_data["underlying_position_id"].notna()][
+    #         "underlying_position_id"
+    #     ]
+    #     .unique()
+    #     .tolist()
+    # )
     position_security_id += cs_curve_components_data["curve_component"].unique().tolist()
     mtm_data = pd.concat(
         (
@@ -1346,7 +1356,7 @@ def final_valuation_fn(config_dict, data=None):
     val_date_filtered = []
     del val_date_filtered
 
-    func = Valuation_Models.Value_extraction_pf
+    func = Value_extraction_pf
 
 
     def process_product_variant(
@@ -1609,8 +1619,9 @@ def final_valuation_fn(config_dict, data=None):
             continue
         
         product_variants = np.unique(entity_filtered_array[:, product_variant_col])
-
+        i=0
         for pv in product_variants:
+            i+=1
             start_time2 = time.time()
             logging.warning(f"[{i}/{len(product_variants)}] Now processing PV: {pv} (start time: {start_time2})")
             try :
@@ -1628,7 +1639,7 @@ def final_valuation_fn(config_dict, data=None):
                     currency_data=currency_data,
                     NMD_adjustments=NMD_adjustments,
                     repayment_schedule=repayment_schedule,
-                    func=Valuation_Models.Value_extraction_pf, 
+                    func=Value_extraction_pf, 
                     vix_data=vix_data,
                     cf_analysis_id=cf_analysis_id,
                     cashflow_uploaded_data=cashflow_uploaded_data,
@@ -1655,7 +1666,7 @@ def final_valuation_fn(config_dict, data=None):
 
             # Log the completion and time taken
             logging.warning(
-                f"[{i}/{len(product_variants)}] Finished processing PV: {pv} (end time: {end_time}). "
+                f"[{i}/{len(product_variants)}] Finished processing PV: {pv} (end time: {end_time2}). "
                 f"Time taken: {round(end_time2 - start_time2, 4)} seconds."
             )
 

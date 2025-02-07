@@ -8,7 +8,7 @@ import psutil
 import time
 import os
 
-from config.settings.base import DISKSTORE_PATH
+from config import DISKSTORE_PATH
 
 def completion_percent(completed_so_far, val_date_filtered,chunk_index,num_splits,product_variant_name):
     percent_complete = (completed_so_far / len(val_date_filtered)) * 100
