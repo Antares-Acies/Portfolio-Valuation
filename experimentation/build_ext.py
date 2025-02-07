@@ -11,17 +11,12 @@ def compile_extension():
     Compiles payment_schedule.cpp into a shared library that Python can import.
     Returns the name of the compiled module file.
     """
-    # Determine the proper extension suffix.
-    # On Windows, python3-config is not available so we use sysconfig.
-    if os.name == 'nt':
-        ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
-    else:
-        ext_suffix = subprocess.check_output(["python3-config", "--extension-suffix"]).decode().strip()
-
+    # Determine the extension suffix (e.g., .cp312-win_amd64.pyd)
+    ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
     module_filename = f"payment_schedule{ext_suffix}"
 
-    # Get the include flags for pybind11 (using the current python executable).
-    py_executable = sys.executable  # This ensures we use the same Python interpreter.
+    # Collect the pybind11 include flags
+    py_executable = sys.executable
     try:
         pybind11_includes = subprocess.check_output(
             [py_executable, "-m", "pybind11", "--includes"]
@@ -29,28 +24,23 @@ def compile_extension():
     except subprocess.CalledProcessError as e:
         raise RuntimeError("Error retrieving pybind11 include flags") from e
 
-    # Choose the compiler and flags based on the operating system.
-    if os.name == 'nt':
-        # On Windows, assume g++ is available (e.g., from MinGW or a similar toolchain).
-        # Note: Adjust the command as needed for your Windows environment.
-        compiler = "g++"
-        # Windows usually does not need -fPIC.
-        compile_cmd = (
-            f"g++ -O3 -Wall -shared -std=c++14 -fPIC "
-            f"{pybind11_includes} payment_schedule.cpp -o {module_filename}"
-        )
-    else:
-        # On Unix-like systems.
-        compiler = "c++"
-        compile_cmd = (
-            f'{compiler} -O3 -Wall -shared -std=c++14 -fPIC '
-            f'{pybind11_includes} payment_schedule.cpp -o {module_filename}'
-        )
+    # Path to the Python 'libs' directory (where python312.lib is located)
+    python_libs_path = r"C:\Users\KumarAkashdeep\AppData\Local\Programs\Python\Python312\libs"
+    
+    # On Windows with MinGW, linking explicitly against python312.lib is required
+    # -L tells g++ where to look for .lib files
+    # -lpython312 links against python312.lib
+    compile_cmd = (
+        f'g++ -O3 -Wall -shared -std=c++14 '          # Compiler flags
+        f'{pybind11_includes} '                      # pybind11 includes
+        f'payment_schedule.cpp '                     # Your source file
+        f'-L"{python_libs_path}" -lpython312 '       # Link to python312.lib
+        f'-o {module_filename}'
+    )
 
     print("Compiling the C++ extension module with command:")
     print(compile_cmd)
 
-    # Run the compile command. shell=True is used here for command-line expansion.
     subprocess.run(compile_cmd, shell=True, check=True)
     print("Compilation finished successfully.")
 
