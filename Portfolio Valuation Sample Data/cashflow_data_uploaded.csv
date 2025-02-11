@@ -1,0 +1,1 @@
+id,extract_date,transaction_date,unique_reference_id,reference_dimension,cashflow_type,cashflow_status,position_id,product_variant_name,cashflow,time_to_maturity,discount_factor,present_value,currency,asset_liability_type,fund,portfolio,entity,cohort,cf_analysis_id,created_by,modified_by,created_date,modified_date,active_from,active_to,is_active_flag

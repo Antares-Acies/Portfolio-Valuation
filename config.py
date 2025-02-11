@@ -1,0 +1,1 @@
+DISKSTORE_PATH = "output/"
