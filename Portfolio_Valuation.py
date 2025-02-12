@@ -237,7 +237,7 @@ cpu_total_count = int(multiprocessing.cpu_count() * 0.8)
 func = Value_extraction_pf
 
 def preprocess_position_data(position_data, column_index_dict, reporting_date, cashflow_uploaded_data): 
-    
+    logging.warning("Inside preprocess_position_data")
     date_columns = [col for col in position_data.columns if re.search(r'_date$', col)]
     for col in date_columns:
         if col in column_index_dict:
@@ -289,7 +289,7 @@ def preprocess_position_data(position_data, column_index_dict, reporting_date, c
         error_rows['reason_for_drop'] = rule['message']
         error_position_data = pd.concat([error_position_data, error_rows])
         count_dropped = len(error_rows)
-        #### " dropped due to {rule['message']} count : {count_dropped}"
+        logging.warning(f" dropped due to {rule['message']} count : {count_dropped}")
 
     # Exclude error rows from processable data
     processable_position_data = position_data_to_process[~position_data_to_process.index.isin(error_position_data.index)]
@@ -1725,7 +1725,7 @@ def final_valuation_fn(config_dict, request, data=None):
             output_df["created_date"] = created_date
             output_df["modified_date"] = modified_date
             cashflow_output_df = output_df
-            cashflow_output_df.to_csv(f"cashflow_output_df_{i}.csv")
+            cashflow_output_df.to_csv(fr"{parquet_file}.csv", index=False)
             # data_handling(request, output_df, config_dict['outputs']['cashflows']['save']['table'], fast_executemany=True)
             logging.warning(f" writing cashflow  {i}")
             i+=1
