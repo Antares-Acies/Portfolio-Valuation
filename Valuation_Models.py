@@ -698,13 +698,12 @@ class Valuation_Models:
         
         if not isinstance(bus_day_convention, str):
             return 5
-
         bus_day_convention_lower = bus_day_convention.lower()
         bus_day_mapping = {
             "following": 1,
             "preceding": 2,
             "modified following": 3,
-            "modified following bimonthly": 4,
+            "modified following bimonthly": 4, 
             "eom": "EOM",
         }
         
@@ -714,11 +713,14 @@ class Valuation_Models:
 
     # DayCount code generator
     def daycount_convention_code(self, daycount_convention):
-    
+        logging.warning(f"716")
         if isinstance(daycount_convention, (list, np.ndarray)):
             daycount_convention = daycount_convention[0]
-            
+        if daycount_convention is None:
+            logging.warning("daycount_convention is None")
+            return 1
         daycount_convention_lower = daycount_convention.lower()
+        logging.warning(f"720 {daycount_convention_lower}")
         daycount_mapping = {
             "30/360_bond_basis": 1,
             "30/360": 1,
@@ -740,6 +742,7 @@ class Valuation_Models:
         }
         
         # Return the code based on the mapping, default to the input if not found
+        logging.warning(f"742")
         return daycount_mapping.get(daycount_convention_lower, daycount_convention)
 
     # Cashflow Dates,YearFrac and Amount calculation
@@ -1542,7 +1545,7 @@ class Valuation_Models:
         )
 
         del_index = []
-
+        logging.warning(f"1545")
         #Creation of custom logic on convention code is based on last payment date (Payment at start of day)
         if convention_code == "EOM":
             Cashflow_Date_array = conventions.eomonth(pd.to_datetime(Ending_Date_array, dayfirst=True), Maturity_date[0])
@@ -1567,6 +1570,7 @@ class Valuation_Models:
                         business_days=business_days,
                     ),
                 )
+                logging.warning(f"1570")
                 if Ending_Date_array[i] > Valuation_Date:
                     Cashflow_Date_array = np.append(
                         Cashflow_Date_array,
@@ -1583,7 +1587,7 @@ class Valuation_Models:
                 Begining_Date_array = np.delete(Begining_Date_array, d_i)
                 Beginning_Date_array_holiday_adjusted = np.delete(Beginning_Date_array_holiday_adjusted, d_i)
                 Ending_Date_array = np.delete(Ending_Date_array, d_i)
-
+        logging.warning(f"1587")
         if interest_moratorium_flag == "Y":
             Cashflow_Date_array = Cashflow_Date_array[Cashflow_Date_array > moratorium_end_date]
             Ending_Date_array = Ending_Date_array[Ending_Date_array > moratorium_end_date]
@@ -1606,6 +1610,7 @@ class Valuation_Models:
         )
 
         Principal_accumulated  = 0   #intilised to handle the scope of variable
+        logging.warning(f"1610")
         if interest_calculation_methodology != "Compound":
             if model_code in ["M019","MO46","M051","M056","M071"]:
                 start_date = Beginning_Date_array_holiday_adjusted[0]
@@ -1614,7 +1619,7 @@ class Valuation_Models:
                 start_date = Begining_Date_array[0]
                 end_date = Ending_Date_array[0]
 
-
+            logging.warning(f"1619")
             if Coupon_Frequency and Coupon_Frequency_unit:
                 if interest_moratorium_flag == "Y":
                     Year_frac_0_value = conventions.A_day_count(
@@ -1646,7 +1651,7 @@ class Valuation_Models:
                 )
 
             Year_frac_array = np.empty([0], dtype="float64")
-
+            logging.warning(f"1651")
             if Year_frac_0_value > 0:
                 Year_frac_array = np.append(Year_frac_array, Year_frac_0_value)
             else:
@@ -1677,7 +1682,7 @@ class Valuation_Models:
                         accrual_convention_code,
                         custom_daycount_conventions=custom_daycount_conventions,
                     )
-
+                logging.warning(f"1682")
                 if Year_frac_value > 0:
                     Year_frac_array = np.append(Year_frac_array, Year_frac_value)
                 else:
@@ -11195,6 +11200,8 @@ def Value_extraction_pf(
     elif row[column_index_dict["model_code"]] in ["M019", "M046",'M074']: 
         # M019 - Fixed Term deposit
         # M074 - Fixed Term deposit Cummulative
+
+        logging.warning(f" inside m019 ")
         final_output_dict = {}
         model_code=row[column_index_dict["model_code"]]
         unique_reference_Id = row[column_index_dict["unique_reference_id"]]
@@ -11204,20 +11211,27 @@ def Value_extraction_pf(
         discount_daycount = row[column_index_dict["discount_daycount_convention"]]
         business_day_convention = np.array([row[column_index_dict["business_convention"]]])
         last_payment_date = row[column_index_dict["last_payment_date"]]
+        logging.warning(f"11211")
         if str(last_payment_date) not in ["nan", "NaT", "None", "-"]:
             last_payment_date = np.datetime64(row[column_index_dict["last_payment_date"]], "D")
         stub_date = row[column_index_dict["stub_date"]]
+        logging.warning(f"11215")
         if str(stub_date) not in ["nan", "NaT", "None", "-"]:
             stub_date = np.datetime64(row[column_index_dict["stub_date"]], "D")
+        logging.warning(f"11218")
         accrual_convention_code = valuation_models.daycount_convention_code(accrual_daycount)
+        logging.warning(f"11220")
         discount_curve = row[column_index_dict["discounting_curve"]]
         product_variant_name = row[column_index_dict["product_variant_name"]]
         fund = row[column_index_dict["fund_code"]]
         portfolio = row[column_index_dict["pool_id"]]
         entity = row[column_index_dict["legal_entity"]]
+        logging.warning(f"11226")
         interest_calculation_methodology = row[column_index_dict["interest_calculation_methodology"]]
         compounding_frequency = row[column_index_dict["compounding_frequency"]]
         compounding_frequency_unit = row[column_index_dict["compounding_frequency_unit"]]
+
+        logging.warning(f"11228")
         if str(row[column_index_dict["next_payment_date"]]) not in ["nan", "None", "NaT", ""]:
             next_payment_date = np.array(row[column_index_dict["next_payment_date"]], dtype="datetime64[D]")
         else:
@@ -11229,6 +11243,7 @@ def Value_extraction_pf(
         interest_rate = base_rate + fixed_spread
         accrued_interest = row[column_index_dict["accrued_interest"]]
         quantity = float(row[column_index_dict["quantity"]])
+        logging.warning(f"11240")
         if str(accrued_interest) not in ["nan", "None", ""]:
             accrued_interest = np.array([float(accrued_interest / quantity)], dtype="float")
 
@@ -11239,7 +11254,7 @@ def Value_extraction_pf(
         asset_liability_type = row[column_index_dict["asset_liability_type"]]
 
         original_outstanding_amount = outstanding_amount
-        
+        logging.warning(f"11248")
         if row[column_index_dict["model_code"]] in ['M074']:
             outstanding_amount = np.array([float(row[column_index_dict["outstanding_amount"]])])
             original_deposit_amount = np.array([float(row[column_index_dict["original_deposit_amount"]])])
