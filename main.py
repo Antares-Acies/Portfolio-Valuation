@@ -7,6 +7,9 @@ import os
 from Portfolio_Valuation import final_valuation_fn
 from config import DISKSTORE_PATH
 from generate_request import RequestData
+
+val_date = "2024-06-30"
+global_Var = 'Valuation Date'
 def main():
 
     if not os.path.exists(DISKSTORE_PATH):
@@ -45,8 +48,7 @@ def main():
             full_path = os.path.join(empty_data_directory, path)
             data[table] = pd.read_csv(full_path)
 
-    val_date = "2025-01-31"
-    global_Var = 'Valuation Date'
+    
 
     # only Yes and No
     Generate_Cashflows = 'Yes'
