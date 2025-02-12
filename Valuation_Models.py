@@ -1721,7 +1721,7 @@ class Valuation_Models:
             ].to_numpy(dtype="float64")
 
             Principal_accumulated = compound_interest_schedule.loc[
-                (compound_interest_schedule["date"] < Maturity_Date[0]),
+                (compound_interest_schedule["date"] <= Maturity_Date[0]),
                 "outstanding_balance_after_payout"
             ].to_numpy(dtype="float64")[-1]  # Take the last element
             
