@@ -35,12 +35,17 @@ def main():
     for table, path in data_path_dict.items():
         try:
             full_path = os.path.join(data_directory, path)
+            empty_full_path = os.path.join(empty_data_directory, path)
             data[table] = pd.read_csv(full_path)
+            sample_data = pd.read_csv(empty_full_path)
+            for column in sample_data.columns:
+                if column not in data[table].columns:
+                    data[table][column] = None
         except FileNotFoundError:
             full_path = os.path.join(empty_data_directory, path)
             data[table] = pd.read_csv(full_path)
 
-    val_date = '2024-07-31'
+    val_date = "2025-01-31"
     global_Var = 'Valuation Date'
 
     # only Yes and No
