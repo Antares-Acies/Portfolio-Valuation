@@ -701,6 +701,7 @@ class Valuation_Models:
 
         bus_day_convention_lower = bus_day_convention.lower()
         bus_day_mapping = {
+            
             "following": 1,
             "preceding": 2,
             "modified following": 3,
