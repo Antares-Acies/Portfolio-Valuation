@@ -574,71 +574,58 @@ def output_check_fn(
 
 def business_day_val(date, convention, holiday_list, business_days="1111100"):
 
+    date = np.datetime64(pd.to_datetime(date).date(), 'D')
     # Following
     if convention == 1:
         i = 0
-        while np.busday_count(date, date + timedelta(days=i), business_days, holiday_list) == 0:
-            if np.busday_count(date, date + timedelta(days=i + 1), business_days, holiday_list) != 0:
-                return date + timedelta(days=i)
+        while np.busday_count(date, date + np.timedelta64(i, 'D'), business_days, holiday_list) == 0:
+            if np.busday_count(date, date + np.timedelta64(i + 1, 'D'), business_days, holiday_list) != 0:
+                return date + np.timedelta64(i, 'D')
             i += 1
     # Preceding
     if convention == 2:
-        if np.busday_count(date, date + timedelta(days=1), business_days, holiday_list) != 0:
+        if np.busday_count(date, date + np.timedelta64(1, 'D'), business_days, holiday_list) != 0:
             return date
         else:
             i = 0
-            while (
-                np.busday_count(
-                    date - timedelta(days=i), date + timedelta(days=1), business_days, holiday_list
-                )
-                == 0
-            ):
-                if (
-                    np.busday_count(
-                        date - (timedelta(days=i + 1)), date + timedelta(days=1), business_days, holiday_list
-                    )
-                    != 0
-                ):
-                    return date - (timedelta(days=i + 1))
+            while np.busday_count(date - np.timedelta64(i, 'D'), date + np.timedelta64(1, 'D'), business_days, holiday_list) == 0:
+                if np.busday_count(date - np.timedelta64(i + 1, 'D'), date + np.timedelta64(1, 'D'), business_days, holiday_list) != 0:
+                    return date - np.timedelta64(i + 1, 'D')
                 i += 1
 
     # Modified Following
     if convention == 3:
         i = 0
-        while np.busday_count(date, date + timedelta(days=i), business_days, holiday_list) == 0:
-            if np.busday_count(date, date + (timedelta(days=i + 1)), business_days, holiday_list) != 0:
-                if (np.datetime64(date) + i).astype(int) % 12 + 1 == np.datetime64(date).astype(int) % 12 + 1:
-                    return date + timedelta(days=i)
+
+        while np.busday_count(date, date + np.timedelta64(i, 'D'), business_days, holiday_list) == 0:        
+            if np.busday_count(date, date + np.timedelta64(i + 1, 'D'), business_days, holiday_list) != 0:
+
+                current_date = date
+                next_date = date + np.timedelta64(1, 'D')
+
+                current_date_month_precision =  current_date.astype('datetime64[M]').astype('int64') % 12 + 1
+                next_date_month_precision = next_date.astype('datetime64[M]').astype('int64') % 12 + 1
+
+                if current_date_month_precision == next_date_month_precision :
+                    return date + np.timedelta64(i, 'D')
                 else:
-                    if np.busday_count(date, date + timedelta(days=1), business_days, holiday_list) != 0:
+                    if np.busday_count(date, date + np.timedelta64(1, 'D'), business_days, holiday_list) != 0:
                         return date
                     else:
                         j = 0
-                        while (
-                            np.busday_count(
-                                date - timedelta(days=j),
-                                date + timedelta(days=1),
-                                business_days,
-                                holiday_list,
-                            )
-                            == 0
-                        ):
+                        while np.busday_count(date - np.timedelta64(j, 'D'), date + np.timedelta64(1, 'D'), business_days, holiday_list) == 0:
                             if (
-                                np.busday_count(
-                                    date - (timedelta(days=j + 1)),
-                                    date + timedelta(days=1),
-                                    business_days,
-                                    holiday_list,
-                                )
+                                np.busday_count(date - np.timedelta64(j + 1, 'D'), date + np.timedelta64(1, 'D'), business_days, holiday_list)
                                 != 0
                             ):
-                                return date - (timedelta(days=j + 1))
+                                return date - np.timedelta64(j + 1, 'D')
                             j += 1
             i += 1
 
     # No adjustment
     if convention in [5, "EOM"]:
         return date
+
 
 
 ## Valuation Models Central Class ##
@@ -1538,7 +1525,7 @@ class Valuation_Models:
         convention_code = self.busday_convention_code(Business_day_convention)
 
         Maturity_Date = np.array(
-            [business_day_val(Maturity_date[0].date(), principal_business_convention_code, [])], dtype="datetime64[D]"
+            [business_day_val(Maturity_date[0].date(), principal_business_convention_code, [],business_days=business_days)], dtype="datetime64[D]"
         )
 
         del_index = []
@@ -1719,7 +1706,7 @@ class Valuation_Models:
                 & (compound_interest_schedule["date"] > Valuation_Date[0]),
                 "interest",
             ].to_numpy(dtype="float64")
-
+            
             Principal_accumulated = compound_interest_schedule.loc[
                 (compound_interest_schedule["date"] <= Maturity_Date[0]),
                 "outstanding_balance_after_payout"
@@ -11232,23 +11219,24 @@ def Value_extraction_pf(
         if str(accrued_interest) not in ["nan", "None", ""]:
             accrued_interest = np.array([float(accrued_interest / quantity)], dtype="float")
 
+
         outstanding_amount = np.array([float(row[column_index_dict["outstanding_amount"]])])
         maturity_date = np.array([pd.to_datetime(row[column_index_dict["maturity_date"]], dayfirst=True)])
         credit_spread_rate = row[column_index_dict["credit_spread_rate"]]
         credit_spread_curve = row[column_index_dict["credit_spread_curve"]]
         asset_liability_type = row[column_index_dict["asset_liability_type"]]
-
         original_outstanding_amount = outstanding_amount
         
         if row[column_index_dict["model_code"]] in ['M074']:
             outstanding_amount = np.array([float(row[column_index_dict["outstanding_amount"]])])
             original_deposit_amount = np.array([float(row[column_index_dict["original_deposit_amount"]])])
-            if str(original_deposit_amount) not in ["nan", "None", ""]:
+            if str(original_deposit_amount[0]) not in ["nan", "None", "", np.nan ]:
                 outstanding_amount = original_deposit_amount
             else : 
-                if str(accrued_interest) not in ["nan", "None", ""]:
+                if str(accrued_interest[0]) in ["nan", "None", ""]:
                     accrued_interest = 0 
                 outstanding_amount -= accrued_interest
+
         
         valuation_results, sensitivity_analysis, pv_principal, measure_value = [], [], [], []
         if cashflow_uploaded_data is not None and len(cashflow_uploaded_data) > 0:
@@ -11930,7 +11918,6 @@ def Value_extraction_pf(
         #  M080 EMI loans with Pricipal Capping to outstanding
         #  M079 process all EMI position as Fixed Position's
         model_code = row[column_index_dict["model_code"]]
-        logging.warning(f"in:{model_code}")
         final_output_dict = {}
         unique_reference_Id = row[column_index_dict["unique_reference_id"]]
         issue_date = np.array(row[column_index_dict["issue_date"]], dtype="datetime64[D]")
