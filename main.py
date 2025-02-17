@@ -8,7 +8,7 @@ from Portfolio_Valuation import final_valuation_fn
 from config import DISKSTORE_PATH
 from generate_request import RequestData
 
-val_date = "2024-06-30"
+val_date = "2024-08-11"
 global_Var = 'Valuation Date'
 def main():
 

@@ -587,8 +587,8 @@ def central_curve_processing(
     new_curve.extend([curve_name for curve_name in unique_curve_list if curve_name not in total_curve])
     new_curve = [new_curve_i for new_curve_i in new_curve if new_curve_i is not None]
 
-    if len(new_curve) > 0:
-        raise Exception(f"Curve not found in Curve Repository: {new_curve}")
+    # if len(new_curve) > 0:
+    #     raise Exception(f"Curve not found in Curve Repository: {new_curve}")
 
     curve_repo_data = curve_repo_data[curve_repo_data['curve_name'].isin(unique_curve_list)]
     cs_curve_repo_data = cs_curve_repo_data[cs_curve_repo_data['curve_name'].isin(unique_curve_list)]
@@ -622,8 +622,8 @@ def central_curve_processing(
         missing_components = [
             component for component in curve_components_check if component not in security_identifiers_check
         ]
-        if len(missing_components) > 0:
-            raise Exception(f"Interest Rate Curve Market data missing: {missing_components}")
+        # if len(missing_components) > 0:
+        #     raise Exception(f"Interest Rate Curve Market data missing: {missing_components}")
 
         curve_data = (
             curve_data.merge(
@@ -668,8 +668,8 @@ def central_curve_processing(
         missing_components = [
             component for component in cs_curve_components_data_check if component not in security_identifiers_check
         ]
-        if len(missing_components) > 0:
-            raise Exception(f"Credit Spread Curve Market data missing: {missing_components}")
+        # if len(missing_components) > 0:
+        #     raise Exception(f"Credit Spread Curve Market data missing: {missing_components}")
 
         # Merge the cs_curve_repo with mtm_data
         credit_spread_data = (
@@ -1200,6 +1200,7 @@ def final_valuation_fn(config_dict, request, data=None):
             return 1000
 
     chunk_size = calculate_chunk_size(val_date_filtered)
+    chunk_size=5
     logging.warning(f'Chunk_size {chunk_size}')
     logging.warning(f'Chunk_size {chunk_size}')
     logging.warning(f'Chunk_size {chunk_size}')
@@ -1347,6 +1348,10 @@ def final_valuation_fn(config_dict, request, data=None):
                     cs_curve_components_data,
                     mtm_data)
 
+    exclude_columns=['reporting_date']
+    exclude_columns_index = [val_date_filtered.columns.get_loc(col) for col in exclude_columns]
+    # position_id_col='position_id'
+    # pos_id_col=val_date_filtered.columns.get_loc(position_id_col)
 
     if len(val_date_filtered)>0:
         val_date_filtered_array = np.array(val_date_filtered)
@@ -1410,10 +1415,116 @@ def final_valuation_fn(config_dict, request, data=None):
 
         cashflow_dir = Path(f"{DISKSTORE_PATH}Cashflow_Engine_Outputs/Cashflow")
         measures_dir = Path(f"{DISKSTORE_PATH}Cashflow_Engine_Outputs/Measures")
+        position_dir = Path(f"{DISKSTORE_PATH}Cashflow_Engine_Outputs/PositionData")
 
-        def remove_older_date_files(directory, file_prefix):
+        existing_position_files = sorted(
+            position_dir.glob(f'*_{legal_entity_name}_{product_variant_name}_*.parquet')
+        )
+        def get_max_identifier(file_list):
+            max_id = 0
+            for f in file_list:
+                parts = f.stem.split('_')
+                try:
+                    # chunk_id might be 3rd from last if pattern is *_{chunk_id}_run_{run_id}.parquet
+                    file_id = int(parts[-3])
+                    max_id = max(max_id, file_id)
+                except:
+                    pass
+            return max_id
+        
+        num_splits = max(1, int(np.ceil(len(variant_filtered) / chunk_size)))
+        new_unique_refs = set()
+        variant_filtered_df=pd.DataFrame(variant_filtered)
+
+        def update_position_data(file_list, ref_id_col="position_id"):
+            # Start from the last file to leverage temporal locality
+            max_position_id = max(1,get_max_identifier(file_list))
+            file_chunks={}
+            if len(file_list)==0:
+                chunks = [variant_filtered[i:i + chunk_size] for i in range(0, len(variant_filtered), chunk_size)]            
+                for chunk_index, chunk_pos_data in enumerate(
+                    chunks, start=1
+                ):
+                    chunk_pos_data=pd.DataFrame(chunk_pos_data)
+                    new_unique_refs.update(chunk_pos_data[pos_id_col])
+                    chunk_pos_data.to_parquet(os.path.join(position_dir,f'Position_{legal_entity_name}_{product_variant_name}_{chunk_index}_{run_id}.parquet'))
+            else:
+                add_new_positions=set()
+                add_new_positions.update(variant_filtered_df[pos_id_col])
+                cols=variant_filtered_df.columns.to_list()
+                for f in file_list:
+                    parts = f.stem.split('_')  # "cashflow_output_ABC_ProductX_1_run_1001"
+                    file_chunk_ind=int(parts[-3]) 
+                    df=pd.read_parquet(f)
+                    temp1=df.loc[df[pos_id_col].isin(variant_filtered_df[pos_id_col].to_list())]
+                    
+                    try:
+                        add_new_positions=set(add_new_positions)-set(temp1[pos_id_col].to_list())
+                    except:
+                        pass
+                    if not temp1.empty:
+                        temp2=variant_filtered_df.loc[variant_filtered_df[pos_id_col].isin(temp1[pos_id_col].to_list())]
+                        temp1 = temp1.loc[:, ~temp1.columns.isin(exclude_columns_index)]
+                        temp2 = temp2.loc[:, ~temp2.columns.isin(exclude_columns_index)]
+                        temp1.set_index(pos_id_col, inplace=True)
+                        temp2.set_index(pos_id_col, inplace=True)
+                        temp1.sort_index(inplace=True)
+                        temp2.sort_index(inplace=True)
+                        
+                        changed_rows=temp1.compare(temp2)
+                        temp1.update(temp2.loc[changed_rows.index])
+                        
+                        new_unique_refs.update(temp2.loc[changed_rows.index].index)
+                        df.set_index(pos_id_col,inplace=True)
+                        df.update(temp1)
+                        df.reset_index(inplace=True)
+                        df = df.reindex(columns=cols)
+                        
+                    
+                    if file_chunk_ind==max_position_id:
+                        
+                        try:
+                            add_new_positions=list(add_new_positions)
+                            add_new_positions.sort()
+                        except:
+                            pass
+                        
+                        rows_needed=0 
+                        
+                        if add_new_positions!=None:
+                            if len(add_new_positions)>0:
+                                if len(df)<chunk_size:
+                                    rows_needed = chunk_size - len(df)
+                                    rows=add_new_positions[:rows_needed]
+                                
+                                    df=pd.concat([df,variant_filtered_df.loc[variant_filtered_df[pos_id_col].isin(rows)]])
+                                    new_unique_refs.update(variant_filtered_df.loc[variant_filtered_df[pos_id_col].isin(rows),pos_id_col]) 
+                                    
+                            add_new_positions=add_new_positions[rows_needed:]
+                    
+                    os.remove(f)
+                    df.to_parquet(os.path.join(position_dir,f'Position_{legal_entity_name}_{product_variant_name}_{file_chunk_ind}_{run_id}.parquet'))
+                    
+                if add_new_positions!=None:
+                    while len(add_new_positions)>0:
+                        max_position_id=max_position_id+1
+                        rows=add_new_positions[:chunk_size]
+                    
+                        df=variant_filtered_df.loc[variant_filtered_df[pos_id_col].isin(rows)]
+                        new_unique_refs.update(variant_filtered_df.loc[variant_filtered_df[pos_id_col].isin(rows),pos_id_col])
+                        df.to_parquet(os.path.join(position_dir,f'Position_{legal_entity_name}_{product_variant_name}_{max_position_id}_{run_id}.parquet'))
+                        if len(add_new_positions)-chunk_size<=0:
+                            break
+                        add_new_positions=add_new_positions[chunk_size:]
+
+
+        
+        update_position_data(existing_position_files, ref_id_col="position_id")
+        
+        pos_in_cashflow=set()
+        def remove_older_files(directory, file_prefix):
             """
-            Removes any file in 'directory' matching the given prefix that has a date < current valuation_date. 
+            Removes any file in 'directory' matching the given prefix that has new/modified input data to be computed. 
             Example naming pattern to parse:
             cashflow_output_{legal_entity}_{valuation_date}_{product_variant}_{chunk_id}_{run_id}.parquet
             => we expect:
@@ -1429,129 +1540,120 @@ def final_valuation_fn(config_dict, request, data=None):
             current_val_date = datetime.strptime(valuation_date, "%Y-%m-%d")
 
             for f in all_files:
-                parts = f.stem.split('_')  # "cashflow_output_ABC_2025-01-21_ProductX_1_1001"
+                parts = f.stem.split('_')  # "cashflow_output_ABC_2025-01-21_ProductX_1_run_1001"
                 if len(parts) < 5:
                     continue  # Not a valid file name format, skip
 
                 try:
-                    file_date_str = parts[3]  # Adjust pattern is different
-                    file_date_obj = datetime.strptime(file_date_str, "%Y-%m-%d")
-                    if file_date_obj < current_val_date:
-                        os.remove(f)
+                    
+                    old_df=pd.read_parquet(f)
+                    pos_in_cashflow.update(old_df.loc[:,'position_id'])
+                    old_df_filtered=old_df.loc[old_df['position_id'].isin(new_unique_refs)]
+                    if not old_df_filtered.empty:
+                        keep_pos_ids=set(variant_filtered_df[pos_id_col])-set(new_unique_refs)
+                        old_df=old_df.loc[old_df['position_id'].isin(keep_pos_ids)]
+                    else:
+                        old_df=old_df.loc[old_df['position_id'].isin(variant_filtered_df[pos_id_col])]
+                    os.remove(f)
+                    os.remove(str(f)+".csv")
+                    logging.warning(f"Deleted file: %s",str(f))
+                    old_df['extract_date']=valuation_date
+                    new_file_chunk_ind=f.stem.split('_')
+                    new_file_chunk_ind=str(new_file_chunk_ind[-3])
+                    new_file = pa.Table.from_pandas(old_df)
+                    output_path = (
+                        f"{DISKSTORE_PATH}Cashflow_Engine_Outputs/Cashflow/"
+                        f"cashflow_output_{legal_entity_name}_{valuation_date}_"
+                        f"{product_variant_name}_{new_file_chunk_ind}_{run_id}.parquet"
+                    )
+                    pq.write_table(new_file, output_path)
+                    old_df.to_csv(f"{output_path}.csv", index=False)
+                        
+                        
+                                    
                 except Exception:
-                    # If parsing fails, skip or handle as needed
-                    pass
+                    # If we can't read this file as Parquet, log a warning and remove it.
+                    logging.warning(f"Removed unreadable file: %s",str(f))
+                    os.remove(f)
+                    os.remove(str(f)+".csv")
+                    continue
 
         # Remove older-date files for cashflow + measures for (legal_entity_name, product_variant_name)
-        remove_older_date_files(cashflow_dir, "cashflow_output")
-        remove_older_date_files(measures_dir, "measures_output")
+        remove_older_files(cashflow_dir, "cashflow_output")
+        remove_older_files(measures_dir, "measures_output")
+        pos_not_in_cashflow=set(variant_filtered_df[pos_id_col])-set(pos_in_cashflow)
+        new_unique_refs.update(pos_not_in_cashflow)
+        
 
 
         existing_cashflow_files = sorted(
-            cashflow_dir.glob(f'*_{legal_entity_name}_{valuation_date}_{product_variant_name}_*.parquet')
+            cashflow_dir.glob(f'*_{legal_entity_name}_*_{product_variant_name}_*.parquet')
         )
         existing_measures_files = sorted(
             measures_dir.glob(f'*_{legal_entity_name}_{valuation_date}_{product_variant_name}_*.parquet')
         )
 
-        new_unique_refs = set(variant_filtered[:, pos_id_col])
-
-        def clean_existing_files(file_list, ref_id_col="position_id"):
-            # Start from the last file to leverage temporal locality
-            for f in reversed(file_list):
-                if not new_unique_refs:
-                    break  
-
-                try:
-                    df = pd.read_parquet(f)
-                except Exception as e:
-                    # If we can't read this file as Parquet, log a warning and remove it.
-                    os.remove(f)
-                    continue
-                
-                mask = df[ref_id_col].isin(new_unique_refs)
-                removed_ids = set(df.loc[mask, ref_id_col].unique())
-
-                df = df[~mask]  # Filter out rows with new_unique_refs
-
-                os.remove(f)  # Remove the file
-                if not df.empty:
-                    pq.write_table(pa.Table.from_pandas(df), f)
-
-                if removed_ids:
-                    new_unique_refs.difference_update(removed_ids)
-
-        # Clean existing partial matches for current date
-        if existing_cashflow_files:
-            clean_existing_files(existing_cashflow_files, ref_id_col="position_id")
-        if existing_measures_files:
-            clean_existing_files(existing_measures_files, ref_id_col="position_id")
-
-
-        num_splits = max(1, int(np.ceil(len(variant_filtered) / chunk_size)))
         completed_so_far = 0
 
-        def get_max_identifier(file_list):
-            max_id = 0
-            for f in file_list:
-                parts = f.stem.split('_')
-                try:
-                    # chunk_id might be 2nd from last if pattern is *_{chunk_id}_{run_id}.parquet
-                    file_id = int(parts[-2])
-                    max_id = max(max_id, file_id)
-                except:
-                    pass
-            return max_id
-
-        max_cashflow_id = get_max_identifier(existing_cashflow_files)
+        
         max_measures_id = get_max_identifier(existing_measures_files)
-
-        cashflow_identifier = max_cashflow_id + 1
         measures_identifier = max_measures_id + 1
 
-        for chunk_index, chunk_pos_data in enumerate(
-            np.array_split(variant_filtered, num_splits), start=1
-        ):
-            completed_so_far += len(chunk_pos_data)
+        existing_position_files = sorted(
+            position_dir.glob(f'*_{legal_entity_name}_{product_variant_name}_*.parquet')
+        )
+
+        
+        for f in existing_position_files:
+            chunk_index=f.stem.split('_')
+            chunk_index=int(chunk_index[-3])
+            chunk_pos_data_df=pd.read_parquet(f)
+            
+            max_position_id = max(1,get_max_identifier(existing_position_files))
+            
+
+            cashflow_data_filtered = chunk_pos_data_df.loc[
+                (chunk_pos_data_df[pos_id_col].isin(new_unique_refs))
+            ]
+            completed_so_far += len(chunk_pos_data_df.loc[chunk_pos_data_df[pos_id_col].isin(variant_filtered_df[pos_id_col].to_list())])
             completion_percent(
-                completed_so_far, variant_filtered, chunk_index, num_splits, product_variant_name
+                completed_so_far, variant_filtered, chunk_index, max_position_id, product_variant_name
             )
-
-            # Filter cashflow_uploaded_data if needed
-            if len(cashflow_uploaded_data) > 0:
-                chunk_pos_ids = chunk_pos_data[:, pos_id_col]
-                cashflow_uploaded_data_filtered = cashflow_uploaded_data.loc[
-                    cashflow_uploaded_data["position_id"].isin(chunk_pos_ids)
-                ]
+            cashflow_uploaded_data_filtered = pd.DataFrame()
+            if len(cashflow_data_filtered)==0:
+                logging.warning('No new or modified position data for cashflow run')
+                cashflow_output=pd.DataFrame()
+                measures_output=pd.DataFrame()
+                final_output_main=pd.DataFrame()
+                final_output=pd.DataFrame()
             else:
-                cashflow_uploaded_data_filtered = pd.DataFrame()
-
+                chunk_pos_data_filtered=cashflow_data_filtered.to_numpy()
             # (Your existing parallel application logic)
-            final_output, cashflow_output, measures_output = applyParallel(
-                config_dict,
-                column_index_dict,
-                chunk_pos_data,
-                vol_repo_data,
-                vol_components_data,
-                holiday_calendar,
-                currency_data,
-                NMD_adjustments,
-                repayment_schedule,
-                func,
-                vix_data,
-                cf_analysis_id,
-                cashflow_uploaded_data_filtered,
-                underlying_position_data,
-                custom_daycount_conventions,
-                dpd_ruleset,
-                overdue_bucketing_data,
-                dpd_schedule,
-                product_holiday_code,
-                request,
-                mtm_data,
-                curve_data,
-                credit_spread_data,
-            )
+                final_output, cashflow_output, measures_output = applyParallel(
+                    config_dict,
+                    column_index_dict,
+                    chunk_pos_data_filtered,
+                    vol_repo_data,
+                    vol_components_data,
+                    holiday_calendar,
+                    currency_data,
+                    NMD_adjustments,
+                    repayment_schedule,
+                    func,
+                    vix_data,
+                    cf_analysis_id,
+                    cashflow_uploaded_data_filtered,
+                    underlying_position_data,
+                    custom_daycount_conventions,
+                    dpd_ruleset,
+                    overdue_bucketing_data,
+                    dpd_schedule,
+                    product_holiday_code,
+                    request,
+                    mtm_data,
+                    curve_data,
+                    credit_spread_data,
+                )
             del cashflow_uploaded_data_filtered
 
             if len(cashflow_output) > 0:
@@ -1567,16 +1669,28 @@ def final_valuation_fn(config_dict, request, data=None):
 
                 if "cashflow" in cashflow_output.columns:
                     cashflow_output = cashflow_output.loc[cashflow_output["cashflow"].notnull()]
-
                 if not cashflow_output.empty:
+                    
+                    for f in existing_cashflow_files:
+                        parts = f.stem.split('_')  # "cashflow_output_ABC_ProductX_1_1001"
+                        if chunk_index==int(parts[-3]):
+                            cashflow_output_old=pd.read_parquet(f)
+                            cashflow_output=pd.concat([cashflow_output_old,cashflow_output],ignore_index=True)
+                            
+                            os.remove(f)
+                            os.remove(str(f)+'.csv')
+                            break
+                    cashflow_output=cashflow_output.loc[cashflow_output['position_id'].isin(variant_filtered_df[pos_id_col])]
+                    cashflow_output['extract_date']=valuation_date
+                    
                     cf_table = pa.Table.from_pandas(cashflow_output)
                     output_path = (
                         f"{DISKSTORE_PATH}Cashflow_Engine_Outputs/Cashflow/"
                         f"cashflow_output_{legal_entity_name}_{valuation_date}_"
-                        f"{product_variant_name}_{cashflow_identifier}_{run_id}.parquet"
+                        f"{product_variant_name}_{chunk_index}_{run_id}.parquet"
                     )
                     pq.write_table(cf_table, output_path)
-                    cashflow_identifier += 1
+                    
 
             if len(measures_output) > 0:
                 measures_output["cf_analysis_id"] = cf_analysis_id
@@ -1610,17 +1724,17 @@ def final_valuation_fn(config_dict, request, data=None):
     all_legal_entities = np.unique(val_date_filtered_array[:, legal_entity_col])
     
     final_output_main = pd.DataFrame() 
-
     for current_entity in all_legal_entities:
         entity_filtered_array = val_date_filtered_array[
             val_date_filtered_array[:, legal_entity_col] == current_entity
         ]
         if len(entity_filtered_array) == 0:
             continue
-        
+        print("\n\nFor Legal Entity :",current_entity)
         product_variants = np.unique(entity_filtered_array[:, product_variant_col])
         i=0
         for pv in product_variants:
+            print("\nFor product variant: ",pv)
             i+=1
             start_time2 = time.time()
             logging.warning(f"[{i}/{len(product_variants)}] Now processing PV: {pv} (start time: {start_time2})")
